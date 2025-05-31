@@ -35,7 +35,8 @@ class User extends Authenticatable
         'nationality',
         'weight',
         'height',
-        'email_verification_code'
+        'email_verification_code',
+        'email_verification_code_expires_at',
     ];
 
     /**

@@ -48,13 +48,15 @@ class AuthController extends Controller
                 'role' => $request->role,
                 'password' => Hash::make($request->password),
                 'email_verification_code' => $verificationCode,
-                'email_verification_code_expires_at' => now()->addHour(),
+                'email_verification_code_expires_at' => now()->addMinutes(10),
             ]);
 
             $token = $user->createToken('API Token')->plainTextToken;
 
             // Send email
-            Mail::to($user->email)->send(new VerifyEmailCodeMail($verificationCode));
+            if($user->email){
+                Mail::to($user->email)->send(new VerifyEmailCodeMail($user));
+            }
 
             return response()->json([
                 'message' => 'User registered. Please verify your email.',
@@ -64,8 +66,6 @@ class AuthController extends Controller
                 ],
                 'token' => $token
             ], 201);
-
-
 
         }catch(Exception $e){
             // Log the exception message along with the stack trace for better debugging
@@ -80,6 +80,88 @@ class AuthController extends Controller
             ], 500);
         }
     }
+
+
+    // Verify the user verification code
+    public function verifyEmail(Request $request){
+        try{
+
+            $request->validate([
+                'email' => 'required|email|exists:users,email',
+                'code' => 'required|string|size:6',
+            ]);
+
+            $user = User::where('email', $request->email)
+                        ->where('email_verification_code', strtoupper($request->code))
+                        ->first();
+
+            if (!$user) {
+                return response()->json(['message' => 'Invalid verification code.'], 400);
+            }
+
+            if ($user->email_verification_code_expires_at < now()) {
+                return response()->json([
+                    'message' => 'Verification code is invalid or expired.'
+                ], 400);
+            }
+
+            $user->email_verified_at = now();
+            $user->email_verification_code = null;
+            $user->save();
+
+            return response()->json(['message' => 'Email verified successfully.'], 201);
+
+        }catch (Exception $e) {
+            Log::error($e->getMessage(), ['exception' => $e]);
+
+            return response()->json([
+                'message' => 'Verification Failed'
+            ], 500);
+        }
+    }
+
+
+
+
+    // Resend verification code email
+    public function resendVerification(Request $request){
+        try{
+
+            $request->validate([
+                'email' => 'required|email|exists:users,email',
+            ]);
+
+            $user = User::where('email', $request->email)->first();
+
+            if ($user->email_verified_at) {
+                return response()->json([
+                    'message' => 'Email is already verified.'
+                ], 400);
+            }
+
+            $newCode = strtoupper(Str::random(6));
+
+            $user->update([
+                'email_verification_code' => $newCode,
+                'email_verification_code_expires_at' => now()->addHour(),
+            ]);
+
+            Mail::to($user->email)->send(new VerifyEmailCodeMail($user));
+
+            return response()->json([
+                'message' => 'A new verification code has been sent to your email.'
+            ]);
+
+        } catch (Exception $e) {
+            Log::error($e->getMessage(), ['exception' => $e]);
+
+            return response()->json([
+                'message' => app()->environment('production') ? 'Something Went Wrong..!!!' : $e->getMessage()
+            ], 500);
+        }
+    }
+
+
 
 
     // Login API
@@ -98,11 +180,11 @@ class AuthController extends Controller
 
             $user = User::where('email', $request->email)->first();
 
-            if (is_null($user->email_verified_at)) {
-                return response()->json([
-                    'message' => 'Please verify your email before logging in.'
-                ], 403);
-            }
+            // if (is_null($user->email_verified_at)) {
+            //     return response()->json([
+            //         'message' => 'Please verify your email before logging in.'
+            //     ], 403);
+            // }
 
             if (!$user || !Hash::check($request->password, $user->password)) {
                 return response()->json([
@@ -110,14 +192,38 @@ class AuthController extends Controller
                 ], 401);
             }
 
+            $abilities = [];
+            $tokenName = $user->email.'_Token';
 
-            $token = $user->createToken('API Token')->plainTextToken;
+            if ($user->role === 'admin') {
+                $abilities = ['server:admin'];
+                $tokenName = $user->email.'_AdminToken';
+            }elseif($user->role === 'client') {
+                $abilities = ['server:client'];
+                $tokenName = $user->email.'_ClientToken';
+            }elseif($user->role === 'nurse') {
+                $abilities = ['server:nurse'];
+                $tokenName = $user->email.'_NurseToken';
+            }
 
+            $accessToken = $user->createToken(
+                $tokenName,
+                $abilities,
+                now()->addDay() // 24-hour expiration
+            )->plainTextToken;
+
+
+            // Return JSON response without setting any cookies
             return response()->json([
                 'message' => 'Login successful',
-                'user' => $user,
-                'token' => $token
-            ], 200);
+                'user' => [
+                    'id' => $user->id,
+                    'fullname' => $user->name,
+                    'email' => $user->email,
+                    'role' => $user->role,
+                ],
+                'accessToken' => $accessToken
+            ]);
 
         } catch (Exception $e) {
             Log::error($e->getMessage(), ['exception' => $e]);
@@ -147,81 +253,8 @@ class AuthController extends Controller
     }
 
 
-    // Verify the user verification code
-    public function verifyEmail(Request $request){
-        try{
 
-            $request->validate([
-                'email' => 'required|email',
-                'code' => 'required|string|size:6',
-            ]);
 
-            $user = User::where('email', $request->email)
-                        ->where('email_verification_code', strtoupper($request->code))
-                        ->first();
-
-            if (!$user) {
-                return response()->json(['message' => 'Invalid verification code.'], 400);
-            }
-
-            if (!$user || $user->email_verification_code_expires_at < now()) {
-                return response()->json([
-                    'message' => 'Verification code is invalid or expired.'
-                ], 400);
-            }
-
-            $user->email_verified_at = now();
-            $user->email_verification_code = null;
-            $user->save();
-
-            return response()->json(['message' => 'Email verified successfully.'], 201);
-
-        }catch (Exception $e) {
-            Log::error($e->getMessage(), ['exception' => $e]);
-
-            return response()->json([
-                'message' => 'Verification Failed'
-            ], 500);
-        }
-    }
-
-    // Resend verification code email
-    public function resendVerification(Request $request){
-        try{
-
-            $request->validate([
-                'email' => 'required|email|exists:users,email',
-            ]);
-
-            $user = User::where('email', $request->email)->first();
-
-            if ($user->email_verified_at) {
-                return response()->json([
-                    'message' => 'Email is already verified.'
-                ], 400);
-            }
-
-            $newCode = strtoupper(Str::random(6));
-
-            $user->update([
-                'email_verification_code' => $newCode,
-                'email_verification_code_expires_at' => now()->addHour(),
-            ]);
-
-            Mail::to($user->email)->send(new VerifyEmailCodeMail($newCode));
-
-            return response()->json([
-                'message' => 'A new verification code has been sent to your email.'
-            ]);
-
-        } catch (Exception $e) {
-            Log::error($e->getMessage(), ['exception' => $e]);
-
-            return response()->json([
-                'message' => app()->environment('production') ? 'Something Went Wrong..!!!' : $e->getMessage()
-            ], 500);
-        }
-    }
 
 
 }
