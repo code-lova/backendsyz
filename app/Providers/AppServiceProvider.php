@@ -22,7 +22,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        RateLimiter::for('resend-verification', function (Request $request) {
+        RateLimiter::for('resend-request', function (Request $request) {
             return Limit::perMinutes(20, 2)->by($request->ip()); // Limit to 2 requests per 20 minutes
         });
     }

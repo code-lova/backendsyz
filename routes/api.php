@@ -13,10 +13,10 @@ Route::get('/clear', function() {
 });
 
 Route::controller(\App\Http\Controllers\Auth\AuthController::class)->group(function(){
-    Route::post('/register', 'register')->name('register');
-    Route::post('/login', 'login')->name('login');
-    Route::post('/verify-email', 'verifyEmail')->middleware('throttle:2,1');
-    Route::post('/resend-verification', 'resendVerification')->middleware('throttle:resend-verification');
+    Route::post('/register', 'register')->name('register')->middleware('throttle:resend-request');
+    Route::post('/login', 'login')->name('login')->middleware('throttle:resend-request');
+    Route::post('/verify-email', 'verifyEmail')->middleware('throttle:resend-request');
+    Route::post('/resend-verification', 'resendVerification')->middleware('throttle:resend-request');
 
 });
 
@@ -36,8 +36,16 @@ Route::middleware(['auth:sanctum', 'role:client', 'ability:server:client'])->gro
     // Other admin routes
     Route::controller(\App\Http\Controllers\Client\DashboardController::class)->group(function (){
         Route::get('/client/dashboard', 'index');
+        Route::get('/client', 'getClientDetails');
 
     });
+
+     Route::controller(\App\Http\Controllers\Client\ClientController::class)->group(function (){
+        Route::get('/client', 'getClientDetails');
+
+    });
+
+
 
 });
 
