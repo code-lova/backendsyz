@@ -36,12 +36,13 @@ Route::middleware(['auth:sanctum', 'role:client', 'ability:server:client'])->gro
     // Other admin routes
     Route::controller(\App\Http\Controllers\Client\DashboardController::class)->group(function (){
         Route::get('/client/dashboard', 'index');
-        Route::get('/client', 'getClientDetails');
 
     });
 
      Route::controller(\App\Http\Controllers\Client\ClientController::class)->group(function (){
         Route::get('/client', 'getClientDetails');
+        Route::put('/client/update', 'update');
+
 
     });
 

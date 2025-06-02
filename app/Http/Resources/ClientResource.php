@@ -31,6 +31,7 @@ class ClientResource extends JsonResource
             'date_of_birth' => $this->date_of_birth,
             'weight'   => $this->weight,
             'height'   => $this->height,
+            'about' => $this->about,
         ];
     }
 }
