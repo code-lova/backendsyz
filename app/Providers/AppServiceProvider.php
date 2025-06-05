@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -24,6 +25,12 @@ class AppServiceProvider extends ServiceProvider
     {
         RateLimiter::for('resend-request', function (Request $request) {
             return Limit::perMinutes(20, 2)->by($request->ip()); // Limit to 2 requests per 20 minutes
+        });
+
+        ResetPassword::createUrlUsing(function ($notifiable, $token) {
+            return 'http://localhost:3000/password/reset?code=' . $token .
+           '&exp=' . now()->addMinutes(10)->timestamp .
+           '&email=' . urlencode($notifiable->getEmailForPasswordReset());
         });
     }
 }

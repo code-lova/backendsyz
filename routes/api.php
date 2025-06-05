@@ -1,9 +1,7 @@
 <?php
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
-
 
 Route::get('/clear', function() {
     Artisan::call('cache:clear');
@@ -12,11 +10,24 @@ Route::get('/clear', function() {
     return "Cleared!";
 });
 
+
+// Route::get('/reset-password/{token}', function ($token) {
+//     return response()->json([
+//         'message' => 'Redirect to frontend handled separately.',
+//         'token' => $token,
+//     ]);
+// })->name('password.reset');
+
+
 Route::controller(\App\Http\Controllers\Auth\AuthController::class)->group(function(){
-    Route::post('/register', 'register')->name('register')->middleware('throttle:resend-request');
-    Route::post('/login', 'login')->name('login')->middleware('throttle:resend-request');
-    Route::post('/verify-email', 'verifyEmail')->middleware('throttle:resend-request');
+    Route::post('/register', 'register')->name('register');
+    Route::post('/login', 'login')->name('login');
+    Route::post('/verify-email', 'verifyEmail');
     Route::post('/resend-verification', 'resendVerification')->middleware('throttle:resend-request');
+
+    //Forgot and RestePassword
+    Route::post('/forgot-password', 'sendResetLink');
+    Route::post('/reset-password', 'reset');
 
 });
 
@@ -61,63 +72,5 @@ Route::middleware(['auth:sanctum', 'role:nurse'])->group(function (){
 
 });
 
-// Route::get('/user', function (Request $request) {
-//     return $request->user();
-// })->middleware('auth:sanctum');
-
-
-
-//FORGOT PASSWORD FUNCTION
-// Route::post('/forgot-password', function (Request $request) {
-//     $validator = Validator::make($request->all(), [
-//         'email' => 'required|email',
-//     ],[
-//         'email.required' => 'A valid email is required to proceed'
-//     ]);
-//     if ($validator->fails()) {
-//         return response()->json([
-//             'status' => 422,
-//             'errors' => $validator->errors(),
-//         ]);
-//     }
-//     $status = Password::sendResetLink($request->only('email'));
-//     return $status === Password::RESET_LINK_SENT
-//         ? response()->json(['status' => 200, 'message' => __($status)])
-//         : response()->json(['status' => 401, 'message' => __($status)]);
-// })->middleware('guest')->name('password.email');
-
-
-// //RESET PASSWORD FUNCTION
-// Route::post('/reset-password', function (Request $request) {
-//     $validator = Validator::make($request->all(), [
-//         'token' => 'required',
-//         'email' => 'required|email',
-//         'password' => 'required|min:8|confirmed',
-//     ],[
-//         'password.confirmed' => 'Password does not match',
-//         'password.min' => 'Password is too short'
-//     ]);
-//     if ($validator->fails()) {
-//         return response()->json([
-//             'status' => 422,
-//             'errors' => $validator->errors(),
-//         ]);
-//     }
-
-//     $status = Password::reset(
-//         $request->only('email', 'password', 'password_confirmation', 'token'),
-//         function ($user, $password) {
-//             $user->forceFill([
-//                 'password' => Hash::make($password)
-//             ])->setRememberToken(Str::random(60));
-//             $user->save();
-//             event(new PasswordReset($user));
-//         }
-//     );
-
-//     return $status === Password::PASSWORD_RESET
-//         ? response()->json(['status' => 200, 'message' => __($status)])
-//         : response()->json(['status' => 498, 'message' => __($status)]);
-// })->middleware('guest')->name('password.update');
 
 
