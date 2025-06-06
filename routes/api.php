@@ -22,7 +22,7 @@ Route::get('/clear', function() {
 Route::get('/', function () {
     return response()->json([
         'message' => 'This is a private gateway API',
-        'version' => '1.0.0'
+        'version' => '1.1.0'
     ]);
 });
 
