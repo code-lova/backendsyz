@@ -8,8 +8,7 @@ return [
 
     'allowed_origins' => [
         env('FRONTEND_URL', 'http://localhost:3000'),
-        'https://supracarer.com',
-        'https://api.supracarer.com',
+        'https://www.supracarer.com',
     ],
 
     'allowed_origins_patterns' => [],
