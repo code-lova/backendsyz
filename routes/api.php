@@ -5,7 +5,8 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/clear', function() {
     Artisan::call('cache:clear');
-    Artisan::call('config:cache');
+    Artisan::call('config:clear');
+    Artisan::call('route:clear');
     Artisan::call('view:clear');
     return "Cleared!";
 });
@@ -18,6 +19,12 @@ Route::get('/clear', function() {
 //     ]);
 // })->name('password.reset');
 
+Route::get('/', function () {
+    return response()->json([
+        'message' => 'This is a private gateway API',
+        'version' => '1.0.0'
+    ]);
+});
 
 Route::controller(\App\Http\Controllers\Auth\AuthController::class)->group(function(){
     Route::post('/register', 'register')->name('register');
