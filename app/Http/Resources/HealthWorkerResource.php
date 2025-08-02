@@ -5,7 +5,7 @@ namespace App\Http\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-class ClientResource extends JsonResource
+class HealthWorkerResource extends JsonResource
 {
     /**
      * Transform the resource into an array.
@@ -18,15 +18,20 @@ class ClientResource extends JsonResource
             'id' => $this->uuid,
             'fullname' => $this->name,
             'email'    => $this->email,
-            'phone'    => $this->phone,
             'gender'   => $this->gender,
+            'phone' => $this->phone,
+            'working_hours' => $this->working_hours,
+            'practitioner' => $this->practitioner,
             'date_of_birth' => $this->date_of_birth,
-            'image' => $this->image,
-            'address' => $this->address,
-            'religion' => $this->religion,
             'country' => $this->country,
             'region' => $this->region,
+            'address' => $this->address,
+            'religion' => $this->religion,
+            'about_me' => $this->about,
+            'image_url' => $this->image,
             'last_logged_in' => $this->last_logged_in,
+            'latitude' => $this->latitude,
+            'longitude' => $this->longitude,
         ];
     }
 }

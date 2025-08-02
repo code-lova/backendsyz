@@ -1,12 +1,9 @@
-{{-- @php
-   $verificationUrl = config('app.frontend_url') . '/verify-email';
-@endphp
- --}}
-
 <x-mail::message>
-# Hello {{ $name }}
-# Welcome to Supracarer you own In-Home Health Care App.
+<div style="text-align: center; margin-bottom: 20px;">
+    <img src="https://www.supracarer.com/assets/images/logo.png" alt="Supracarer Logo" width="150" height="auto">
+</div>
 
+# Hello {{ $name }}
 
 Use the following code to verify your email address:<br>
 NOTE: This code will expire in 10 mins.
@@ -15,14 +12,8 @@ NOTE: This code will expire in 10 mins.
 
 <br>
 
-{{-- (Optionally) You can click the button below to open the email verification form <br>
-
-@component('mail::button', ['url' => $verificationUrl])
-Go to Verification Form
-@endcomponent --}}
-
-Thanks,<br>
-{{ config('app.name') }}
+Supracarer<br>
+{{ config('app.tagline') }}
 </x-mail::message>
 
 

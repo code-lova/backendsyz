@@ -33,7 +33,7 @@ jobs:
     - name: Build NPM Assets
       run: npm run build
 
-    - name: Synchronize Files To Server
+    - name: Synchronize Laravel Files To Server
       uses: easingthemes/ssh-deploy@v2.1.5
       env:
         SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
@@ -43,6 +43,16 @@ jobs:
         REMOTE_PORT: ${{ secrets.VPS_PORT }}
         TARGET: "/home/u868895797/domains/supracarer.com/api"
 
+    - name: Synchronize Public Folder To public_html/zipperapi
+      uses: easingthemes/ssh-deploy@v2.1.5
+      env:
+        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        SOURCE: "public/"
+        REMOTE_HOST: ${{ secrets.VPS_HOST }}
+        REMOTE_USER: ${{ secrets.VPS_USER }}
+        REMOTE_PORT: ${{ secrets.VPS_PORT }}
+        TARGET: "/home/u868895797/domains/supracarer.com/public_html/zipperapi"
+       
     - name: Run Remote/Artisan Commands
       uses: appleboy/ssh-action@v0.1.6
       with:

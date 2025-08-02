@@ -1,24 +1,24 @@
 <?php
 
-namespace App\Http\Controllers\Client;
+namespace App\Http\Controllers\Healthworker;
 
 use App\Http\Controllers\Controller;
-use App\Http\Resources\ClientResource;
+use App\Http\Resources\HealthWorkerResource;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
-
-class ClientController extends Controller
+class ProfileController extends Controller
 {
-    public function getClientDetails(Request $request){
 
+    //Geting Healhworkder details
+    public function authHealthDetails(Request $request){
         $user = Auth::user();
-
-        return new ClientResource($user);
+        return new HealthWorkerResource($user);
     }
+
 
     public function update(Request $request)
     {
@@ -32,18 +32,19 @@ class ClientController extends Controller
                 'email' => 'required|email|unique:users,email,' . $user->id,
                 'phone' => ['required', 'regex:/^\+?[0-9]{10,15}$/', 'unique:users,phone,' . $user->id],
                 'date_of_birth' => 'required|date',
-                'place_of_birth' => 'required|string|max:255',
-                'blood_group' => 'required|string',
-                'genotype' => 'required|string',
-                'address' => 'nullable|string',
+                'country' => 'required|string|max:255',
+                'region' => 'required|string',
+                'working_hours' => [
+                    'required',
+                    'string',
+                    'regex:/^(0?[1-9]|1[0-2])(:[0-5][0-9])?(am|pm)\s*-\s*(0?[1-9]|1[0-2])(:[0-5][0-9])?(am|pm)$/i'
+                ],
+                'address' => 'required|string',
                 'religion' => 'nullable|string',
-                'nationality' => 'required|string',
-                'weight' => 'required|numeric|min:0',
-                'height' => 'required|numeric|min:0',
-                'gender' => 'required|in:male,female,other',
+                'gender' => 'required|in:Male,Female,Non-binary,Transgender,Bigender',
                 'about' => 'required|string|max:1000',
-                'image' => 'nullable|url',
-                'image_public_id' => 'nullable|string',
+                'latitude' => 'nullable|numeric|between:-90,90',
+                'longitude' => 'nullable|numeric|between:-180,180',
             ], [
                 'email.unique' => 'This email is already in use.',
                 'phone.unique' => 'This phone number is already registered.',
@@ -58,20 +59,6 @@ class ClientController extends Controller
             }
 
             $validated = $validator->validated();
-
-            // Handle image replacement
-            if (isset($validated['image']) && isset($validated['image_public_id'])) {
-                // If user already has image → delete old Cloudinary image
-                if ($user->image_public_id) {
-                    $this->deleteCloudinaryImage($user->image_public_id);
-                }
-
-                $user->image = $validated['image'];
-                $user->image_public_id = $validated['image_public_id'];
-            }
-
-            // Unset these from validated so no double update
-            unset($validated['image'], $validated['image_public_id']);
 
 
             /** @var \App\Models\User $user */
@@ -103,25 +90,5 @@ class ClientController extends Controller
         }
     }
 
-
-    protected function deleteCloudinaryImage($publicId)
-    {
-        try {
-
-            $cloudinary = new \Cloudinary\Cloudinary([
-                'cloud' => [
-                    'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
-                    'api_key'    => env('CLOUDINARY_API_KEY'),
-                    'api_secret' => env('CLOUDINARY_API_SECRET'),
-                ],
-            ]);
-            $cloudinary->uploadApi()->destroy($publicId);
-        } catch (\Exception $e) {
-            Log::warning('Failed to delete Cloudinary image', [
-                'public_id' => $publicId,
-                'error' => $e->getMessage(),
-            ]);
-        }
-    }
 
 }

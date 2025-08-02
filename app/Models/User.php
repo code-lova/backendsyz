@@ -4,17 +4,27 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 
+use Illuminate\Support\Str;
+use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Notifications\Notifiable;
 use Illuminate\Contracts\Auth\CanResetPassword;
-use Illuminate\Auth\Passwords\CanResetPassword as CanResetPasswordTrait;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
-use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Auth\Passwords\CanResetPassword as CanResetPasswordTrait;
 
 class User extends Authenticatable implements CanResetPassword
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable, HasApiTokens, CanResetPasswordTrait;
+
+    protected static function boot(){
+        parent::boot();
+        static::creating(function ($model) {
+            if (empty($model->uuid)) {
+                $model->uuid = (string) Str::uuid();
+            }
+        });
+    }
 
     /**
      * The attributes that are mass assignable.
@@ -26,21 +36,24 @@ class User extends Authenticatable implements CanResetPassword
         'email',
         'password',
         'role',
+        'practitioner',
         'about',
         'phone',
         'gender',
         'date_of_birth',
         'image',
-        'place_of_birth',
-        'blood_group',
-        'genotype',
+        'image_public_id',
         'address',
         'religion',
-        'nationality',
-        'weight',
-        'height',
         'email_verification_code',
         'email_verification_code_expires_at',
+        'latitude',
+        'longitude',
+        'last_logged_in',
+        'uuid',
+        'country',
+        'region',
+        'working_hours',
     ];
 
     /**
