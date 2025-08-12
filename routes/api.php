@@ -64,6 +64,8 @@ Route::middleware(['auth:sanctum', 'role:admin', 'ability:server:admin'])->group
 
 });
 
+
+
 Route::middleware(['auth:sanctum', 'role:client', 'ability:server:client'])->group(function (){
 
     // Other admin routes
@@ -75,7 +77,12 @@ Route::middleware(['auth:sanctum', 'role:client', 'ability:server:client'])->gro
         Route::get('/client', 'getClientDetails');
         Route::put('/client/update', 'update');
     });
+
+    Route::controller(\App\Http\Controllers\Client\BookingAppointmentController::class)->group(function () {
+        Route::post('/booking-appointment', 'create');
+    });
 });
+
 
 
 Route::middleware(['auth:sanctum', 'role:healthworker', 'ability:server:healthworker'])->group(function (){
