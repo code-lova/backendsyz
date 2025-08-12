@@ -51,7 +51,7 @@ class SupportController extends Controller
         }catch(\Exception $e){
             DB::rollBack();
             Log::error('support update failed', [
-                'user_id' => optional(Auth::user())->id,
+                'user_id' => $user->id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
