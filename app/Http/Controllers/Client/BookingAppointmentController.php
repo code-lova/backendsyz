@@ -47,8 +47,8 @@ class BookingAppointmentController extends Controller
             'special_notes' => 'required|string|min:20|max:1000',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
-            'start_time' => 'required|date_format:H:i,G:i',
-            'end_time' => 'required|date_format:H:i,G:i|after:start_time',
+            'start_time' => 'required|string',
+            'end_time' => 'required|string',
             'start_time_period' => 'required|string|in:AM,PM',
             'end_time_period' => 'required|string|in:AM,PM',
 
@@ -67,24 +67,31 @@ class BookingAppointmentController extends Controller
 
         $data = $validator->validated();
 
-        if (BookingAppt::where('user_uuid', $user->uuid)->where('status', 'Pending')->exists()) {
-            return response()->json([
-                'message' => 'You have an existing pending booking.',
-                'errors' => ['Your exixting appointment is not completed.']
-            ], 409);
-        }
+        // if (BookingAppt::where('user_uuid', $user->uuid)->where('status', 'Pending')->exists()) {
+        //     return response()->json([
+        //         'message' => 'You have an existing pending booking.',
+        //         'errors' => ['Your exixting appointment is not completed.']
+        //     ], 409);
+        // }
 
         try {
 
             DB::beginTransaction();
 
+            // Generate unique booking reference
+            $bookingReference = $this->generateBookingReference();
+
             $bookingApt = BookingAppt::create(array_merge(
-                ['user_uuid' => $user->uuid],
+                [
+                    'user_uuid' => $user->uuid,
+                    'booking_reference' => $bookingReference
+                ],
                 Arr::only($data, [
                     'requesting_for', 'someone_name', 'someone_phone', 'someone_email',
                     'other_medical_information', 'care_duration', 'care_duration_value',
                     'care_type', 'accommodation', 'meal', 'num_of_meals',
-                    'special_notes', 'start_date', 'end_date', 'start_time', 'end_time', 'status'
+                    'special_notes', 'start_date', 'end_date', 'start_time', 'end_time',
+                    'start_time_period', 'end_time_period', 'status'
                 ])
             ));
 
@@ -103,6 +110,10 @@ class BookingAppointmentController extends Controller
             return response()->json([
                 'status' => 'Success',
                 'message' => 'Booking created successfully.',
+                'data' => [
+                    'booking_reference' => $bookingReference,
+                    'booking_id' => $bookingApt->uuid
+                ]
             ], 200);
 
         }catch(\Exception $e){
@@ -119,5 +130,339 @@ class BookingAppointmentController extends Controller
             ], 500);
         };
 
+    }
+
+    /**
+     * Show booking appointments with pagination, filtering, and sorting.
+     *
+     * Retrieves booking appointments with their related data including
+     * user information, health worker details, and other services.
+     * Supports filtering by status, sorting options, and pagination.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function show(Request $request)
+    {
+        $user = Auth::user();
+
+        // Validate request parameters
+        $validator = Validator::make($request->all(), [
+            'status' => 'nullable|string|in:Pending,Processing,Confirmed,Ongoing,Done,Cancelled',
+            'sort' => 'nullable|string|in:newest,oldest,start_date_asc,start_date_desc,status_asc,status_desc',
+            'page' => 'nullable|integer|min:1',
+            'per_page' => 'nullable|integer|min:1|max:100',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed.',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            // Build the query
+            $query = BookingAppt::with([
+                'user:uuid,name,email,phone,image,country',
+                'healthWorker:uuid,name,email,phone,image,country',
+                'others:uuid,booking_appts_uuid,medical_services,other_extra_service'
+            ])->where('user_uuid', $user->uuid);
+
+            // Apply status filter
+            if ($request->status && $request->status !== 'All') {
+                $query->where('status', $request->status);
+            }
+
+            // Apply sorting
+            switch ($request->sort) {
+                case 'newest':
+                    $query->orderBy('created_at', 'desc');
+                    break;
+                case 'oldest':
+                    $query->orderBy('created_at', 'asc');
+                    break;
+                case 'start_date_asc':
+                    $query->orderBy('start_date', 'asc')->orderBy('start_time', 'asc');
+                    break;
+                case 'start_date_desc':
+                    $query->orderBy('start_date', 'desc')->orderBy('start_time', 'desc');
+                    break;
+                case 'status_asc':
+                    $query->orderBy('status', 'asc');
+                    break;
+                case 'status_desc':
+                    $query->orderBy('status', 'desc');
+                    break;
+                default:
+                    $query->orderBy('created_at', 'desc'); // Default sorting
+                    break;
+            }
+
+            // Get pagination parameters
+            $perPage = $request->per_page ?? 10;
+            $page = $request->page ?? 1;
+
+            // Execute the paginated query
+            $bookings = $query->paginate($perPage, ['*'], 'page', $page);
+
+            if ($bookings->isEmpty()) {
+                return response()->json([
+                    'message' => 'No bookings found for this user.',
+                    'data' => [],
+                    'meta' => [
+                        'total' => 0,
+                        'per_page' => $perPage,
+                        'current_page' => $page,
+                        'last_page' => 1,
+                        'from' => null,
+                        'to' => null
+                    ]
+                ], 200);
+            }
+
+            // Hide the id field from each booking response
+            $bookings->getCollection()->each(function ($booking) {
+                $booking->makeHidden(['id']);
+            });
+
+            return response()->json([
+                'status' => 'Success',
+                'data' => $bookings->items(),
+                'meta' => [
+                    'total' => $bookings->total(),
+                    'per_page' => $bookings->perPage(),
+                    'current_page' => $bookings->currentPage(),
+                    'last_page' => $bookings->lastPage(),
+                    'from' => $bookings->firstItem(),
+                    'to' => $bookings->lastItem(),
+                    'has_more_pages' => $bookings->hasMorePages()
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::error('Booking retrieval failed', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'message' => app()->environment('production') ? 'Something went wrong while retrieving bookings.' : $e->getMessage(),
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Cancel a specific booking appointment by UUID.
+     *
+     * Allows clients to cancel their pending appointments by updating the status
+     * from 'Pending' to 'Cancelled' and recording the cancellation details.
+     * Only pending appointments can be cancelled.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @param string $id The UUID of the booking appointment to cancel
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function cancelAppointment(Request $request, $id)
+    {
+        $user = Auth::user();
+
+        // Validate the UUID format
+        if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $id)) {
+            return response()->json([
+                'message' => 'Invalid booking ID format.'
+            ], 400);
+        }
+
+        // Validate request data
+        $validator = Validator::make($request->all(), [
+            'action' => 'required|string|in:cancel',
+            'reason_for_cancellation' => 'required_if:action,cancel|string|min:10|max:500',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed.',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $data = $validator->validated();
+
+        try {
+            DB::beginTransaction();
+
+            // Find the specific booking by UUID and ensure it belongs to the authenticated user
+            $booking = BookingAppt::where('uuid', $id)
+                ->where('user_uuid', $user->uuid)
+                ->first();
+
+            if (!$booking) {
+                return response()->json([
+                    'message' => 'Booking Appointment not found.'
+                ], 404);
+            }
+
+            // Check if booking can be cancelled (only pending appointments)
+            if ($booking->status !== 'Pending') {
+                return response()->json([
+                    'message' => 'Only pending appointments can be cancelled. Current status: ' . $booking->status
+                ], 422);
+            }
+
+            // Handle cancellation action
+            if ($data['action'] === 'cancel') {
+                $booking->update([
+                    'status' => 'Cancelled',
+                    'reason_for_cancellation' => $data['reason_for_cancellation'],
+                    'cancelled_by_user_uuid' => $user->uuid,
+                ]);
+
+                DB::commit();
+
+                 // TODO:: Dont forget to send emails to admin and client
+
+                Log::info('Booking appointment cancelled successfully', [
+                    'user_id' => $user->id,
+                    'booking_uuid' => $booking->uuid,
+                    'booking_reference' => $booking->booking_reference,
+                    'user_uuid' => $user->uuid,
+                    'reason' => $data['reason_for_cancellation'],
+                    'cancelled_at' => now()
+                ]);
+
+                return response()->json([
+                    'status' => 'Success',
+                    'message' => 'Booking appointment cancelled successfully.',
+                    'data' => [
+                        'booking_reference' => $booking->booking_reference,
+                        'status' => $booking->status,
+                        'cancelled_at' => now()->toDateTimeString()
+                    ]
+                ], 200);
+            }
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Log::error('Booking cancellation failed', [
+                'user_id' => $user->id,
+                'booking_uuid' => $id,
+                'action' => $data['action'] ?? 'unknown',
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'message' => app()->environment('production') ? 'Something went wrong while processing your request.' : $e->getMessage(),
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+    /**
+     * Delete a specific booking appointment by UUID.
+     *
+     * Handles the deletion of a specific booking appointment identified by UUID
+     * with proper error handling and database transactions to ensure data integrity.
+     * Only allows deletion of bookings that belong to the authenticated user.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @param string $id The UUID of the booking appointment to delete
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function destroy(Request $request, $id)
+    {
+        $user = Auth::user();
+
+        // Validate the UUID format
+        if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $id)) {
+            return response()->json([
+                'message' => 'Invalid booking ID format.'
+            ], 400);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // Find the specific booking by UUID and ensure it belongs to the authenticated user
+            $booking = BookingAppt::with('others')
+                ->where('uuid', $id)
+                ->where('user_uuid', $user->uuid)
+                ->first();
+
+            if (!$booking) {
+                return response()->json([
+                    'message' => 'Booking Appointment not found.'
+                ], 404);
+            }
+
+            // Check if booking can be deleted (e.g., not in progress or completed)
+            if (in_array($booking->status, ['Processing', 'Confirmed', 'Ongoing', 'Done'])) {
+                return response()->json([
+                    'message' => 'Cannot delete booking appointment.'
+                ], 422);
+            }
+
+            // Delete related booking appointment others first
+            $booking->others()->delete();
+
+            // Delete the main booking appointment
+            $booking->delete();
+
+            DB::commit();
+
+            Log::info('Booking appointment deleted successfully', [
+                'user_id' => $user->id,
+                'booking_uuid' => $booking->uuid,
+                'user_uuid' => $user->uuid,
+                'deleted_at' => now()
+            ]);
+
+            return response()->json([
+                'status' => 'Success',
+                'message' => 'Booking appointment deleted successfully.'
+            ], 200);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Log::error('Booking deletion failed', [
+                'user_id' => $user->id,
+                'booking_uuid' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'message' => app()->environment('production') ? 'Something went wrong while deleting the booking.' : $e->getMessage(),
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Generate a unique booking reference number.
+     *
+     * Creates a 12-character alphanumeric uppercase reference number
+     * that is guaranteed to be unique in the database.
+     *
+     * @return string
+     */
+    private function generateBookingReference(): string
+    {
+        do {
+            // Generate 12-character alphanumeric uppercase string
+            $reference = 'BK' . strtoupper(substr(str_shuffle('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'), 0, 10));
+
+            // Check if this reference already exists
+            $exists = BookingAppt::where('booking_reference', $reference)->exists();
+
+        } while ($exists);
+
+        return $reference;
     }
 }

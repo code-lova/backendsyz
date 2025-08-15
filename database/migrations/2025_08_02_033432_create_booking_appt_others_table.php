@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('booking_appt_others', function (Blueprint $table) {
             $table->id();
-             $table->uuid()->uniqid();
+            $table->uuid()->uniqid();
             $table->uuid('booking_appts_uuid');
             $table->string('medical_services')->nullable();
             $table->string('other_extra_service')->nullable();
