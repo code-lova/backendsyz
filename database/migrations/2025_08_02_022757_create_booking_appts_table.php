@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->uuid('uuid')->unique();
             $table->uuid('user_uuid');
+            $table->uuid('health_worker_uuid')->nullable();
             $table->enum('requesting_for', ['Self', 'Someone'])->default('Self');
             $table->string('someone_name')->nullable();
             $table->string('someone_phone')->nullable();
@@ -33,8 +34,12 @@ return new class extends Migration
             $table->time('end_time');
             $table->string('start_time_period')->default('AM');
             $table->string('end_time_period')->default('AM');
-            $table->enum('status', ['Pending', 'Processing', 'Confirmed', 'Ongoing', 'Done', 'Declined'])->default('Pending');
+            $table->enum('status', ['Pending', 'Processing', 'Confirmed', 'Ongoing', 'Done', 'Cancelled'])->default('Pending');
             $table->foreign('user_uuid')
+                ->references('uuid')
+                ->on('users')
+                ->onDelete('cascade');
+            $table->foreign('health_worker_uuid')
                 ->references('uuid')
                 ->on('users')
                 ->onDelete('cascade');

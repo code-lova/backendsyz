@@ -12,7 +12,9 @@ class BookingAppt extends BaseModel
     protected $table = 'booking_appts';
     protected $fillable = [
         'uuid',
+        'booking_reference',
         'user_uuid',
+        'health_worker_uuid',
         'requesting_for',
         'someone_name',
         'someone_phone',
@@ -31,11 +33,18 @@ class BookingAppt extends BaseModel
         'start_time_period',
         'end_time_period',
         'status',
+        'reason_for_cancellation',
+        'cancelled_by_user_uuid',
     ];
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_uuid', 'uuid');
+    }
+
+    public function healthWorker(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'health_worker_uuid', 'uuid');
     }
 
     public function others(): HasMany
