@@ -67,10 +67,12 @@ class BookingAppointmentController extends Controller
 
         $data = $validator->validated();
 
-        // if (BookingAppt::where('user_uuid', $user->uuid)->where('status', 'Pending')->exists()) {
+        // if (BookingAppt::where('user_uuid', $user->uuid)
+        //     ->whereIn('status', ['Pending', 'Ongoing', 'Confirmed'])
+        //     ->exists()) {
         //     return response()->json([
-        //         'message' => 'You have an existing pending booking.',
-        //         'errors' => ['Your exixting appointment is not completed.']
+        //         'message' => 'You have an existing appointment that is not completed.',
+        //         'errors' => ['Your existing appointment is either pending, ongoing, or confirmed.']
         //     ], 409);
         // }
 
@@ -464,5 +466,100 @@ class BookingAppointmentController extends Controller
         } while ($exists);
 
         return $reference;
+    }
+
+    //Mark appointment done and save review and ratings
+    public function doneAppointment(Request $request, $id) {
+        $user = Auth::user();
+
+        $request = request();
+        $id = $request->route('id');
+
+        // Validate UUID format
+        if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $id)) {
+            return response()->json([
+                'message' => 'Invalid booking ID format.'
+            ], 400);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'status' => 'required|in:Done',
+            'rating' => 'required|integer|min:1|max:5',
+            'review' => 'nullable|string|max:1000',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed.',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $data = $validator->validated();
+
+        try {
+            DB::beginTransaction();
+
+            // Find the booking and ensure it belongs to the user
+            $booking = BookingAppt::where('uuid', $id)
+                ->where('user_uuid', $user->uuid)
+                ->first();
+
+            if (!$booking) {
+                return response()->json([
+                    'message' => 'Booking Appointment not found.'
+                ], 404);
+            }
+
+            // Only allow if status is Ongoing
+            if ($booking->status !== 'Ongoing') {
+                return response()->json([
+                    'message' => 'Only ongoing appointments can be marked as done.'
+                ], 422);
+            }
+
+            // Get healthworker uuid
+            $healthworkerUuid = $booking->health_worker_uuid;
+            if (!$healthworkerUuid) {
+                return response()->json([
+                    'message' => 'No healthworker assigned to this appointment.'
+                ], 422);
+            }
+
+            // Update booking status to Done
+            $booking->update([
+                'status' => 'Done',
+            ]);
+
+            // Store review and rating
+            \App\Models\HealthworkerReview::create([
+                'booking_appt_uuid' => $booking->uuid,
+                'client_uuid' => $user->uuid,
+                'healthworker_uuid' => $healthworkerUuid,
+                'rating' => $data['rating'],
+                'review' => $data['review'] ?? null,
+                'reviewed_at' => now(),
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'status' => 'Success',
+                'message' => 'Appointment Done and review submitted.',
+            ], 200);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Marking appointment as done or review failed', [
+                'user_id' => $user->id,
+                'booking_uuid' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json([
+                'message' => app()->environment('production') ? 'Something went wrong while completing the appointment.' : $e->getMessage(),
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }
