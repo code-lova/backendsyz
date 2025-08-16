@@ -82,8 +82,9 @@ Route::middleware(['auth:sanctum', 'role:client', 'ability:server:client'])->gro
         Route::post('/booking-appointment', 'create');
         Route::get('/booking-appointment', 'show');
         Route::put('/booking-appointment/{id}', 'cancelAppointment');
-        Route::put('/make-done/{id}', 'doneAppointment');
+        Route::put('/mark-done/{id}', 'doneAppointment');
         Route::delete('/booking-appointment/{id}', 'destroy');
+
     });
 });
 
