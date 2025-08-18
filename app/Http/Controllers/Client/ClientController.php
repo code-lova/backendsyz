@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\UpdateClientProfileRequest;
 use App\Http\Resources\ClientResource;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -20,108 +21,32 @@ class ClientController extends Controller
         return new ClientResource($user);
     }
 
-    public function update(Request $request)
+    public function update(UpdateClientProfileRequest $request)
     {
         try {
-            DB::beginTransaction();
-
+            /** @var \App\Models\User $user */
             $user = Auth::user();
 
-            $validator = Validator::make($request->all(), [
-                'name' => 'sometimes|string|max:255',
-                'email' => 'required|email|unique:users,email,' . $user->id,
-                'phone' => ['required', 'regex:/^\+?[0-9]{10,15}$/', 'unique:users,phone,' . $user->id],
-                'date_of_birth' => 'required|date',
-                'place_of_birth' => 'required|string|max:255',
-                'blood_group' => 'required|string',
-                'genotype' => 'required|string',
-                'address' => 'nullable|string',
-                'religion' => 'nullable|string',
-                'nationality' => 'required|string',
-                'weight' => 'required|numeric|min:0',
-                'height' => 'required|numeric|min:0',
-                'gender' => 'required|in:male,female,other',
-                'about' => 'required|string|max:1000',
-                'image' => 'nullable|url',
-                'image_public_id' => 'nullable|string',
-            ], [
-                'email.unique' => 'This email is already in use.',
-                'phone.unique' => 'This phone number is already registered.',
-                'about.max' => 'About section must not exceed 1000 characters.',
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'message' => 'Validation failed.',
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
-            $validated = $validator->validated();
-
-            // Handle image replacement
-            if (isset($validated['image']) && isset($validated['image_public_id'])) {
-                // If user already has image → delete old Cloudinary image
-                if ($user->image_public_id) {
-                    $this->deleteCloudinaryImage($user->image_public_id);
-                }
-
-                $user->image = $validated['image'];
-                $user->image_public_id = $validated['image_public_id'];
-            }
-
-            // Unset these from validated so no double update
-            unset($validated['image'], $validated['image_public_id']);
-
-
-            /** @var \App\Models\User $user */
-            $user->update($validated);
-
-            DB::commit();
+            $user->update($request->validated());
 
             return response()->json([
                 'message' => 'Profile updated successfully.',
             ], 200);
 
         } catch (\Exception $e) {
-            DB::rollBack();
             Log::error('User update failed', [
-                'user_id' => optional(Auth::user())->id,
+                'user_id' => Auth::user()->id,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
             ]);
-
-            $message = app()->environment('production')
-            ? 'Something Went Wrong'
-            : $e->getMessage();
-
 
             return response()->json([
-                'message' => $message,
-                'error' => $e->getMessage()
+                'message' => app()->environment('production')
+                    ? 'Something went wrong. Please try again later.'
+                    : $e->getMessage(),
             ], 500);
         }
+
     }
 
-
-    protected function deleteCloudinaryImage($publicId)
-    {
-        try {
-
-            $cloudinary = new \Cloudinary\Cloudinary([
-                'cloud' => [
-                    'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
-                    'api_key'    => env('CLOUDINARY_API_KEY'),
-                    'api_secret' => env('CLOUDINARY_API_SECRET'),
-                ],
-            ]);
-            $cloudinary->uploadApi()->destroy($publicId);
-        } catch (\Exception $e) {
-            Log::warning('Failed to delete Cloudinary image', [
-                'public_id' => $publicId,
-                'error' => $e->getMessage(),
-            ]);
-        }
-    }
 
 }

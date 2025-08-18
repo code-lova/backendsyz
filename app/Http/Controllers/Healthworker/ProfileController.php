@@ -73,7 +73,7 @@ class ProfileController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('User update failed', [
-                'user_id' => optional(Auth::user())->id,
+                'user_id' => Auth::user()->id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
