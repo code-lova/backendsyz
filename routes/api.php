@@ -86,6 +86,14 @@ Route::middleware(['auth:sanctum', 'role:client', 'ability:server:client'])->gro
         Route::delete('/booking-appointment/{id}', 'destroy');
 
     });
+
+    Route::controller(\App\Http\Controllers\Client\SupportTicketController::class)->group(function () {
+        Route::post('/ticket-support', 'createTicketMessage');
+        Route::get('/ticket-support', 'getTicketAndMessages');
+
+        Route::post('/ticket-support/{id}/reply', 'replyToTicket');
+
+    });
 });
 
 

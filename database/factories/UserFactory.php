@@ -28,7 +28,19 @@ class UserFactory extends Factory
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
-            'remember_token' => Str::random(10),
+            'role' => 'client',
+            'about' => fake()->sentence(),
+            'phone' => fake()->phoneNumber(),
+            'gender' => fake()->randomElement(['male', 'female', 'other']),
+            'date_of_birth' => fake()->date('Y-m-d'),
+            'address' => fake()->address(),
+            'religion' => fake()->randomElement(['Christianity', 'Islam', 'Other']),
+            'email_verification_code' => Str::random(6),
+            'email_verification_code_expires_at' => now()->addDays(1),
+            'uuid' => (string) Str::uuid(),
+            'country' => fake()->country(),
+            'region' => fake()->state(),
+            'working_hours' => '9am-5pm',
         ];
     }
 

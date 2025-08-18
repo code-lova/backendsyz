@@ -1,0 +1,193 @@
+<?php
+
+namespace App\Http\Controllers\Client;
+
+use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
+use App\Models\clientSupportMessages;
+use Illuminate\Support\Facades\Auth;
+use App\Models\clientSupportTicket;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
+use App\Services\ReferenceService;
+
+class SupportTicketController extends Controller
+{
+    public function createTicketMessage(Request $request, ReferenceService $referenceService)
+    {
+        $user = Auth::user();
+
+        $validator = Validator::make($request->all(), [
+            'subject' => 'required|string|max:255',
+            'message' => 'required|string|max:1000',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed.',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $data = $validator->validated();
+
+        try {
+            DB::beginTransaction();
+
+            //check if user has open ticket
+            // $openTicket = clientSupportTicket::where('user_uuid', $user->uuid)
+            //     ->where('status', 'open')
+            //     ->first();
+
+            // if ($openTicket) {
+            //     return response()->json([
+            //         'message' => 'You already have an open ticket.',
+            //     ], 404);
+            // }
+
+            $ticket = clientSupportTicket::create([
+                'user_uuid' => $user->uuid,
+                'reference' => $referenceService->getReference(
+                    clientSupportTicket::class,
+                    'reference',
+                    'TICKET'
+                ),
+                'subject' => $data['subject'],
+                'message' => $data['message'],
+            ]);
+
+            DB::commit();
+
+            // TODO: make sure you send an email here
+
+            return response()->json([
+                'status' => 'Success',
+                'message' => 'Ticket created successfully.',
+                'data' => [
+                    'id' => $ticket->uuid,
+                    'reference' => $ticket->reference,
+                    'subject' => $ticket->subject,
+                    'message' => $ticket->message,
+                    'status' => $ticket->status,
+                    'created_at' => $ticket->created_at,
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('create new ticket failed', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json([
+                'message' => app()->environment('production') ? 'Something went wrong while creating the ticket.' : $e->getMessage(),
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+
+    //get the ticket message created by client
+    public function getTicketAndMessages(Request $request)
+    {
+        $user = Auth::user();
+
+        $tickets = ClientSupportTicket::with('messages')
+            ->where('user_uuid', $user->uuid)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // Transform tickets to omit id and use uuid
+        $transformed = $tickets->map(function ($ticket) {
+            return [
+                'id' => $ticket->uuid,
+                'reference' => $ticket->reference,
+                'subject' => $ticket->subject,
+                'message' => $ticket->message,
+                'status' => $ticket->status,
+                'created_at' => $ticket->created_at,
+                'messages' => $ticket->messages,
+            ];
+        });
+
+        return response()->json([
+            'status' => 'Success',
+            'data' => $transformed,
+        ], 200);
+    }
+
+
+    public function replyToTicket(Request $request, $id)
+    {
+        $user = Auth::user();
+
+        $validator = Validator::make($request->all(), [
+            'message' => 'required|string|max:1000',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed.',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $data = $validator->validated();
+
+        try {
+            DB::beginTransaction();
+
+            $ticket = clientSupportTicket::with('messages')
+                ->where('user_uuid', $user->uuid)
+                ->where('uuid', $id)
+                ->first();
+
+            if (!$ticket) {
+                return response()->json([
+                    'message' => 'Ticket not found.',
+                ], 404);
+            }
+
+            //Lets get the role of the sender
+            $senderType = $user->role === 'client' ? 'client' : 'admin';
+
+            $reply = $ticket->messages()->create([
+                'ticket_uuid' => $ticket->uuid,
+                'sender_uuid' => $user->uuid,
+                'sender_type' => $senderType,
+                'message' => $data['message'],
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'status' => 'Success',
+                'message' => 'Reply sent successfully.',
+                'data' => [
+                    'id' => $reply->uuid,
+                    'ticket_id' => $ticket->uuid,
+                    'message' => $reply->message,
+                    'created_at' => $reply->created_at,
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('reply to ticket failed', [
+                'user_id' => $user->id,
+                'ticket_id' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json([
+                'message' => app()->environment('production') ? 'Something went wrong while replying to the ticket.' : $e->getMessage(),
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+}
