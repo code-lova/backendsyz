@@ -19,6 +19,7 @@ class ClientResource extends JsonResource
             'fullname' => $this->name,
             'email'    => $this->email,
             'phone'    => $this->phone,
+            'about'    => $this->about,
             'gender'   => $this->gender,
             'date_of_birth' => $this->date_of_birth,
             'image' => $this->image,
@@ -27,6 +28,8 @@ class ClientResource extends JsonResource
             'country' => $this->country,
             'region' => $this->region,
             'last_logged_in' => $this->last_logged_in,
+            'latitude' => $this->latitude,
+            'longitude' => $this->longitude,
         ];
     }
 }

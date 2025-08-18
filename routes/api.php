@@ -75,7 +75,7 @@ Route::middleware(['auth:sanctum', 'role:client', 'ability:server:client'])->gro
 
      Route::controller(\App\Http\Controllers\Client\ClientController::class)->group(function (){
         Route::get('/client', 'getClientDetails');
-        Route::put('/client/update', 'update');
+        Route::put('/client', 'update');
     });
 
     Route::controller(\App\Http\Controllers\Client\BookingAppointmentController::class)->group(function () {
