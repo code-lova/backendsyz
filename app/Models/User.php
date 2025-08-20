@@ -54,6 +54,9 @@ class User extends Authenticatable implements CanResetPassword
         'country',
         'region',
         'working_hours',
+        'two_factor_enabled',
+        'two_factor_code',
+        'two_factor_expires_at',
     ];
 
     /**
@@ -77,5 +80,15 @@ class User extends Authenticatable implements CanResetPassword
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    public function sessions()
+    {
+        return $this->hasMany(UserSession::class, 'user_uuid', 'uuid');
+    }
+
+    public function settings()
+    {
+        return $this->hasOne(UserSettings::class, 'user_uuid', 'uuid');
     }
 }

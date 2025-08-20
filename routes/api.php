@@ -37,19 +37,37 @@ Route::controller(\App\Http\Controllers\Auth\AuthController::class)->group(funct
     Route::post('/forgot-password', 'sendResetLink')->middleware('throttle:forgot-password');
     Route::post('/reset-password', 'reset');
 
+    //2FA auth
+    Route::post('/auth/verify-2fa', 'verify2FA')->middleware('throttle:verify-2fa');
+    Route::post('/auth/resend-2fa', 'resend2FA')->middleware('throttle:resend-2fa');
+
 });
 
 Route::middleware(['auth:sanctum'])->group(function (){
     Route::controller(\App\Http\Controllers\Auth\AuthController::class)->group(function (){
         Route::get('/logout', 'logoutHandler');
+        Route::get('/logout-all-devices', 'logoutAllDevicesHandler');
         Route::put('/location', 'updateUserLocation');
         Route::put('/image', 'updateImage');
+        Route::put('/update-password', 'updatePassword');
     });
 
     Route::controller(\App\Http\Controllers\Healthworker\UnavailableDateController::class)->group(function(){
         Route::post('/unavailable-dates/toggle', 'toggle');
         Route::get('/unavailable-dates', 'getUnavailableDates');
 
+    });
+
+    Route::controller(\App\Http\Controllers\Auth\SettingsController::class)->group(function (){
+        Route::post('/enable-2fa', 'enable2FA');
+        Route::post('/disable-2fa', 'disable2FA');
+        Route::get('/user-sessions', 'getUserSessions');
+        Route::post('/update-settings', 'updateSettings');
+        Route::get('/user-settings', 'getUserSettings');
+    });
+
+    Route::controller(\App\Http\Controllers\Auth\UserController::class)->group(function (){
+        Route::delete('/delete-account', 'deleteUserAccount');
     });
 
 });
@@ -84,7 +102,6 @@ Route::middleware(['auth:sanctum', 'role:client', 'ability:server:client'])->gro
         Route::put('/booking-appointment/{id}', 'cancelAppointment');
         Route::put('/mark-done/{id}', 'doneAppointment');
         Route::delete('/booking-appointment/{id}', 'destroy');
-
     });
 
     Route::controller(\App\Http\Controllers\Client\SupportTicketController::class)->group(function () {
@@ -92,7 +109,11 @@ Route::middleware(['auth:sanctum', 'role:client', 'ability:server:client'])->gro
         Route::get('/ticket-support', 'getTicketAndMessages');
 
         Route::post('/ticket-support/{id}/reply', 'replyToTicket');
+    });
 
+    Route::controller(\App\Http\Controllers\Auth\SettingsController::class)->group(function () {
+        Route::put('/client', 'updatePassword');
+        Route::put('/client/settings', 'updateSettings');
     });
 });
 

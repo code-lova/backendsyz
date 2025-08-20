@@ -30,6 +30,8 @@ class ClientResource extends JsonResource
             'last_logged_in' => $this->last_logged_in,
             'latitude' => $this->latitude,
             'longitude' => $this->longitude,
+            'two_fa_enabled' => $this->two_factor_enabled,
+            'joined' => $this->created_at,
         ];
     }
 }

@@ -31,12 +31,20 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(5)->by($request->ip()); // 5 attempts per minute
         });
 
-         RateLimiter::for('login', function (Request $request) {
+        RateLimiter::for('login', function (Request $request) {
             return Limit::perMinute(10)->by($request->ip());  //10 requests/minute
         });
 
-         RateLimiter::for('forgot-password', function (Request $request) {
+        RateLimiter::for('forgot-password', function (Request $request) {
             return Limit::perMinute(5)->by($request->ip());  //5 requests/minute
+        });
+
+        RateLimiter::for('verify-2fa', function (Request $request) {
+            return Limit::perMinute(10)->by($request->ip());  //10 requests/minute
+        });
+
+        RateLimiter::for('resend-2fa', function (Request $request) {
+            return Limit::perMinute(3)->by($request->ip());  //3 requests/minute
         });
 
         ResetPassword::createUrlUsing(function ($notifiable, $token) {
