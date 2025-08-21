@@ -92,7 +92,7 @@ class AuthController extends Controller
         }
     }
 
-  
+
 
     // Login API
     public function login(Request $request){
@@ -155,9 +155,6 @@ class AuthController extends Controller
 
             // Get device/browser information
             $deviceInfo = $this->getDeviceInfo($request);
-            
-            // Debug logging to see what Agent is detecting
-            Log::info('Login Agent Detection Debug', $deviceInfo);
             
             $session = $user->sessions()->create([
                 'ip_address' => $request->ip(),
@@ -268,10 +265,10 @@ class AuthController extends Controller
 
             // Get device/browser information
             $deviceInfo = $this->getDeviceInfo($request);
-            
+
             // Debug logging to see what Agent is detecting
             Log::info('2FA Agent Detection Debug', $deviceInfo);
-            
+
             $session = $user->sessions()->create([
                 'ip_address' => $request->ip(),
                 'device' => $deviceInfo['device'],
@@ -543,7 +540,7 @@ class AuthController extends Controller
         }
     }
 
-   
+
 
     // Logout for only current device
     public function logoutHandler(Request $request){
@@ -573,7 +570,7 @@ class AuthController extends Controller
 
             // ✅ Delete all expired sessions for this user
             $deletedSessionsCount = $user->sessions()->where('status', 'expired')->delete();
-            
+
             Log::info('Expired sessions cleaned up during logout', [
                 'user_id' => $user->id,
                 'deleted_sessions_count' => $deletedSessionsCount,
@@ -621,7 +618,7 @@ class AuthController extends Controller
 
             // ✅ Delete all expired sessions for this user
             $deletedSessionsCount = $user->sessions()->where('status', 'expired')->delete();
-            
+
             Log::info('Expired sessions cleaned up during logout', [
                 'user_id' => $user->id,
                 'deleted_sessions_count' => $deletedSessionsCount,
@@ -816,18 +813,18 @@ class AuthController extends Controller
         // Check for forwarded User-Agent from frontend (Next.js)
         $userAgent = $request->header('X-Real-User-Agent') ?: $request->header('User-Agent', 'Unknown');
         Agent::setUserAgent($userAgent);
-        
+
         $platform = Agent::platform();
         $browser = Agent::browser();
         $device = Agent::device() ?: (Agent::isMobile() ? 'Mobile' : (Agent::isTablet() ? 'Tablet' : (Agent::isDesktop() ? 'Desktop' : 'Unknown')));
-        
+
         // Fallback detection for cases where Agent returns false/empty
         if (!$platform || !$browser) {
             $fallbackData = $this->parseUserAgentFallback($userAgent);
             $platform = $platform ?: $fallbackData['platform'];
             $browser = $browser ?: $fallbackData['browser'];
         }
-        
+
         return [
             'user_agent' => $userAgent,
             'platform' => $platform,
@@ -846,7 +843,7 @@ class AuthController extends Controller
     {
         $platform = 'Unknown';
         $browser = 'Unknown';
-        
+
         // If user agent is minimal (like "node"), try to infer from context
         if (strtolower($userAgent) === 'node' || strpos(strtolower($userAgent), 'node') !== false) {
             $platform = 'Server/CLI';
@@ -868,7 +865,7 @@ class AuthController extends Controller
         elseif (preg_match('/iPhone|iPad|iPod/i', $userAgent)) {
             $platform = 'iOS';
         }
-        
+
         // Check for common browsers (only if not already detected as Node.js)
         if ($browser === 'Unknown') {
             if (preg_match('/Chrome/i', $userAgent)) {
@@ -899,7 +896,7 @@ class AuthController extends Controller
                 $platform = 'Command Line';
             }
         }
-        
+
         return [
             'platform' => $platform,
             'browser' => $browser
