@@ -19,7 +19,7 @@ class ClientController extends Controller
         return new ClientResource($user);
     }
 
-    public function update(UpdateClientProfileRequest $request)
+    public function updateClientProfile(UpdateClientProfileRequest $request)
     {
         try {
             /** @var \App\Models\User $user */

@@ -86,14 +86,16 @@ Route::middleware(['auth:sanctum', 'role:admin', 'ability:server:admin'])->group
 
 Route::middleware(['auth:sanctum', 'role:client', 'ability:server:client'])->group(function (){
 
-    // Other admin routes
     Route::controller(\App\Http\Controllers\Client\DashboardController::class)->group(function (){
-        Route::get('/client/dashboard', 'index');
+        Route::get('/activity-stats', 'monthlyBookingActivity');
+        Route::get('/total-appointment', 'getTotalAppointment');
+        Route::get('/next-appointment', 'getNextAppointment');
+        Route::get('/verified-health-workers', 'getVerifiedHealthWorkers');
     });
 
      Route::controller(\App\Http\Controllers\Client\ClientController::class)->group(function (){
         Route::get('/client', 'getClientDetails');
-        Route::put('/client', 'update');
+        Route::put('/profile-update', 'updateClientProfile');
     });
 
     Route::controller(\App\Http\Controllers\Client\BookingAppointmentController::class)->group(function () {
@@ -111,10 +113,6 @@ Route::middleware(['auth:sanctum', 'role:client', 'ability:server:client'])->gro
         Route::post('/ticket-support/{id}/reply', 'replyToTicket');
     });
 
-    Route::controller(\App\Http\Controllers\Auth\SettingsController::class)->group(function () {
-        Route::put('/client', 'updatePassword');
-        Route::put('/client/settings', 'updateSettings');
-    });
 });
 
 
