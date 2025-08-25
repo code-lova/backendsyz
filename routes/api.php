@@ -80,6 +80,10 @@ Route::middleware(['auth:sanctum', 'role:admin', 'ability:server:admin'])->group
 
     });
 
+    Route::controller(\App\Http\Controllers\Admin\AdminController::class)->group(function (){
+        Route::get('/admin', 'getAdminDetails');
+    });
+
 });
 
 
