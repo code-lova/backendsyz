@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Healthworker;
 
 use App\Http\Controllers\Controller;
+use App\Mail\NewSupportMessage;
 use App\Models\SupportMessage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 
 class SupportController extends Controller
@@ -38,8 +40,25 @@ class SupportController extends Controller
             $supportMessage->status = 'Pending';
             $supportMessage->save();
 
-            //TODO:  After saving make sure to send an email with the
-            //TODO: with the content to admin email
+            // Send email to admin with support message content
+            try {
+                $adminEmail = config('mail.admin_email') ?? env('ADMIN_EMAIL');
+                $mailData = [
+                    'user_name' => $user->name,
+                    'user_email' => $user->email,
+                    'subject' => $supportMessage->subject,
+                    'message' => $supportMessage->message,
+                ];
+                if ($adminEmail) {
+                    Mail::to($adminEmail)->send(new NewSupportMessage($mailData));
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to send support ticket email', [
+                    'user_id' => $user->id,
+                    'error' => $e->getMessage(),
+                ]);
+                // Do not fail support creation if email fails
+            }
 
             DB::commit();
 

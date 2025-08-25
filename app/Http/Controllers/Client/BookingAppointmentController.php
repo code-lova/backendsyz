@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
+use App\Mail\NewBookingRequest;
 use App\Models\BookingAppt;
 use App\Models\BookingApptOthers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -67,14 +69,14 @@ class BookingAppointmentController extends Controller
 
         $data = $validator->validated();
 
-        // if (BookingAppt::where('user_uuid', $user->uuid)
-        //     ->whereIn('status', ['Pending', 'Ongoing', 'Confirmed'])
-        //     ->exists()) {
-        //     return response()->json([
-        //         'message' => 'You have an existing appointment that is not completed.',
-        //         'errors' => ['Your existing appointment is either pending, ongoing, or confirmed.']
-        //     ], 409);
-        // }
+        if (BookingAppt::where('user_uuid', $user->uuid)
+            ->whereIn('status', ['Pending', 'Ongoing', 'Confirmed'])
+            ->exists()) {
+            return response()->json([
+                'message' => 'You have an existing appointment that is not completed.',
+                'errors' => ['Your existing appointment is either pending, ongoing, or confirmed.']
+            ], 409);
+        }
 
         try {
 
@@ -105,7 +107,36 @@ class BookingAppointmentController extends Controller
                 'other_extra_service' => $data['other_extra_service'] ?? [],
             ]);
 
-            // TODO:: Dont forget to send emails to admin and client
+            // Send emails to client and admin after booking creation
+            try {
+                // Prepare email data
+                $clientEmail = $user->email;
+                $adminEmail = config('mail.admin_email') ?? env('ADMIN_EMAIL');
+
+                // Prepare mailable instance
+                $mailData = [
+                    'booking_reference' => $bookingReference,
+                    'client_name' => $user->name,
+                    'client_email' => $user->email,
+                    'start_date' => $bookingApt->start_date,
+                    'end_date' => $bookingApt->end_date,
+                    // Add more booking details as needed
+                ];
+
+                // Send to client
+                Mail::to($clientEmail)->send(new NewBookingRequest($mailData));
+
+                // Send to admin if email is set
+                if ($adminEmail) {
+                    Mail::to($adminEmail)->send(new NewBookingRequest($mailData));
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to send booking emails', [
+                    'user_id' => $user->id,
+                    'error' => $e->getMessage(),
+                ]);
+                // Do not fail booking creation if email fails
+            }
 
             DB::commit();
 
@@ -547,6 +578,8 @@ class BookingAppointmentController extends Controller
                 'status' => 'Success',
                 'message' => 'Appointment Done and review submitted.',
             ], 200);
+
+            //TODO::Send mail to client and and healthworker on status update
 
         } catch (\Exception $e) {
             DB::rollBack();
