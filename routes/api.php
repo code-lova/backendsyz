@@ -82,6 +82,13 @@ Route::middleware(['auth:sanctum', 'role:admin', 'ability:server:admin'])->group
 
     Route::controller(\App\Http\Controllers\Admin\AdminController::class)->group(function (){
         Route::get('/admin', 'getAdminDetails');
+
+    });
+
+    Route::controller(\App\Http\Controllers\Admin\UserManagementController::class)->group(function (){
+        Route::get('/allusers', 'listUsers');
+        Route::put('/user/{id}/update-user', 'updateUser');
+        Route::delete('/user/{id}', 'deleteUser');
     });
 
 });
