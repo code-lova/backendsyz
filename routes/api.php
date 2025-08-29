@@ -103,6 +103,15 @@ Route::middleware(['auth:sanctum', 'role:admin', 'ability:server:admin'])->group
 
     });
 
+
+    Route::controller(\App\Http\Controllers\Admin\TicketSupport::class)->group(function (){
+        Route::get('/admin/support-tickets', 'listSupportTickets');
+        Route::post('/admin/support-tickets/{id}/reply', 'replyToTicket');
+        Route::get('/admin/support-tickets/{id}', 'getSupportTicketById');
+        Route::put('/admin/support-tickets/{id}/status', 'updateTicketStatus');
+
+    });
+
 });
 
 
