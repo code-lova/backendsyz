@@ -92,6 +92,14 @@ class User extends Authenticatable implements CanResetPassword
         return $this->hasOne(UserSettings::class, 'user_uuid', 'uuid');
     }
 
+    public function guidedRateSystem(){
+        return $this->hasMany(GuidedRateSystem::class, 'user_uuid', 'uuid');
+    }
+
+    public function unavailableDates(){
+        return $this->hasMany(UnavailableDates::class, 'user_uuid', 'uuid');
+    }
+
     public function healthworkerReviews()
     {
         return $this->hasMany(HealthWorkerReview::class, 'healthworker_uuid', 'uuid');

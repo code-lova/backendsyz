@@ -89,6 +89,18 @@ Route::middleware(['auth:sanctum', 'role:admin', 'ability:server:admin'])->group
         Route::get('/allusers', 'listUsers');
         Route::put('/user/{id}/update-user', 'updateUser');
         Route::delete('/user/{id}', 'deleteUser');
+
+        //Fetch all users that have roles health workers
+        Route::get('/all-health-workers', 'getHealthWorkers');
+    });
+
+    Route::controller(\App\Http\Controllers\Admin\BookingRequests::class)->group(function (){
+        Route::get('/booking-requests', 'listBookingRequests');
+        Route::put('/booking-request/{id}/processing', 'processingBookingRequest');
+        Route::put('/booking-request/{id}/done', 'doneBookingRequest');
+        Route::put('/booking-request/{id}/cancel', 'cancelBookingRequest');
+        Route::delete('/booking-request/{id}/delete', 'destroyBookingRequest');
+
     });
 
 });
