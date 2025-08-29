@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\BookingAppt;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -79,7 +80,7 @@ class UserManagementController extends Controller
                 'role' => 'sometimes|in:client,healthworker,admin',
                 'practitioner' => 'sometimes|max:255',
                 'phone' => 'sometimes|regex:/^\+?[0-9]{10,15}$/|unique:users,phone,' . $user->id,
-                'gender' => 'sometimes|in:Male,Female,Non-binary,Transgender,Bigender',
+                'gender' => 'sometimes',
                 'country' => 'sometimes|max:100',
                 'region' => 'sometimes|max:100',
                 'religion' => 'sometimes|max:100',
@@ -102,6 +103,47 @@ class UserManagementController extends Controller
              // Log error for debugging
             Log::error('Unable to update user details', [
                 'user_id' => $user->id ?? 'unknown',
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => app()->environment('production') ? 'Something went wrong.' : $e->getMessage(),
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    //fetch all users with role as health worker and their guided rate system and unavailable dates
+    public function getHealthWorkers()
+    {
+        try {
+            // Eager load guidedRateSystem relationship and service types
+            $healthWorkers = User::where('role', 'healthworker')
+                ->with('guidedRateSystem.serviceTypes')
+                ->with('unavailableDates')
+                ->latest()
+                ->get();
+
+            // Check if health worker is assigned to confirmed/ongoing appointments
+            $healthWorkers->each(function ($healthWorker) {
+                $healthWorker->is_assigned = BookingAppt::where('health_worker_uuid', $healthWorker->uuid)
+                    ->whereIn('status', ['Confirmed', 'Ongoing'])
+                    ->exists();
+                    
+                // Check if health worker is assigned to processing appointments (awaiting confirmation)
+                $healthWorker->is_processing = BookingAppt::where('health_worker_uuid', $healthWorker->uuid)
+                    ->where('status', 'Processing')
+                    ->exists();
+            });
+
+            return response()->json([
+                'status' => 'success',
+                'health_workers' => $healthWorkers
+            ], 200);
+        } catch (\Exception $e) {
+            // Log error for debugging
+            Log::error('Fetching health workers failed', [
                 'error' => $e->getMessage(),
             ]);
 

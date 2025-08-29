@@ -73,9 +73,9 @@
             </tr>
             <!-- Add more booking details as needed -->
         </table>
-        <p>We will review your request and get back to you shortly. If you have any questions, please reply to this email.</p>
+        <p>We will review your request and get back to you shortly. If you have any questions, please contact support.</p>
         <div class="footer">
-            <span class="brand">Supracarer</span> &mdash; Professional Care Services<br>
+            <span class="brand">Supracarer</span> &mdash; Professional Home Care Services<br>
             This is an automated message. Please do not reply directly to this email.
         </div>
     </div>

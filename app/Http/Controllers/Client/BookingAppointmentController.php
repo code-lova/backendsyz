@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
+use App\Mail\BookingStatusNotification;
 use App\Mail\NewBookingRequest;
 use App\Models\BookingAppt;
 use App\Models\BookingApptOthers;
+use App\Models\HealthworkerReview;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Mail;
@@ -353,9 +355,41 @@ class BookingAppointmentController extends Controller
                     'cancelled_by_user_uuid' => $user->uuid,
                 ]);
 
-                DB::commit();
+                // Send mail to client and admin on status update
+                try {
+                    $clientEmail = $user->email ?? null;
+                    $adminEmail = config('mail.admin_email') ?? env('ADMIN_EMAIL');
+                   
+                    // Email data for client
+                    $mailDataForClient = [
+                        'booking_reference' => $booking->booking_reference,
+                        'status' => 'Cancelled',
+                        'client_name' => $user->name ?? '',
+                        'cancelled_at' => now()->toDateTimeString(),
+                    ];
+                    
+                    // Email data for admin (different messaging)
+                    $mailDataForAdmin = [
+                        'booking_reference' => $booking->booking_reference,
+                        'status' => 'Cancelled',
+                        'client_name' => $user->name ?? '',
+                        'cancelled_at' => now()->toDateTimeString(),
+                        'is_for_admin' => true, // Flag to identify admin email
+                    ];
+                    if ($clientEmail) {
+                        Mail::to($clientEmail)->send(new BookingStatusNotification($mailDataForClient));
+                    }
+                    if ($adminEmail) {
+                        Mail::to($adminEmail)->send(new BookingStatusNotification($mailDataForAdmin));
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Failed to send booking Cancelled notification', [
+                        'booking_id' => $booking->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
 
-                 // TODO:: Dont forget to send emails to admin and client
+                DB::commit();
 
                 Log::info('Booking appointment cancelled successfully', [
                     'user_id' => $user->id,
@@ -532,7 +566,8 @@ class BookingAppointmentController extends Controller
             DB::beginTransaction();
 
             // Find the booking and ensure it belongs to the user
-            $booking = BookingAppt::where('uuid', $id)
+            $booking = BookingAppt::with(['user:uuid,name,email', 'healthWorker:uuid,name,email'])
+                ->where('uuid', $id)
                 ->where('user_uuid', $user->uuid)
                 ->first();
 
@@ -563,7 +598,7 @@ class BookingAppointmentController extends Controller
             ]);
 
             // Store review and rating
-            \App\Models\HealthworkerReview::create([
+            HealthworkerReview::create([
                 'booking_appt_uuid' => $booking->uuid,
                 'client_uuid' => $user->uuid,
                 'healthworker_uuid' => $healthworkerUuid,
@@ -572,14 +607,63 @@ class BookingAppointmentController extends Controller
                 'reviewed_at' => now(),
             ]);
 
+            // Send mail to client and admin and healthworker on status update
+            try {
+                $clientEmail = $user->email ?? null;
+                $healthworkerEmail = $booking->healthWorker->email ?? null;
+                $adminEmail = config('mail.admin_email') ?? env('ADMIN_EMAIL');
+                
+                // Email data for client
+                $mailDataForClient = [
+                    'booking_reference' => $booking->booking_reference,
+                    'status' => 'Done',
+                    'client_name' => $user->name ?? '',
+                    'healthworker_name' => $booking->healthWorker->name ?? '',
+                    'completed_at' => now()->toDateTimeString(),
+                ];
+                
+                // Email data for admin (different messaging)
+                $mailDataForAdmin = [
+                    'booking_reference' => $booking->booking_reference,
+                    'status' => 'Done',
+                    'client_name' => $user->name ?? '',
+                    'healthworker_name' => $booking->healthWorker->name ?? '',
+                    'completed_at' => now()->toDateTimeString(),
+                    'is_for_admin' => true, // Flag to identify admin email
+                ];
+                
+                // Email data for health worker (different addressing)
+                $mailDataForHealthWorker = [
+                    'booking_reference' => $booking->booking_reference,
+                    'status' => 'Done',
+                    'client_name' => $user->name ?? '',
+                    'healthworker_name' => $booking->healthWorker->name ?? '',
+                    'completed_at' => now()->toDateTimeString(),
+                    'is_for_healthworker' => true, // Flag to identify health worker email
+                ];
+                
+                if ($clientEmail) {
+                    Mail::to($clientEmail)->send(new BookingStatusNotification($mailDataForClient));
+                }
+                if ($adminEmail) {
+                    Mail::to($adminEmail)->send(new BookingStatusNotification($mailDataForAdmin));
+                }
+                if ($healthworkerEmail) {
+                    Mail::to($healthworkerEmail)->send(new BookingStatusNotification($mailDataForHealthWorker));
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to send booking done notification', [
+                    'booking_uuid' => $booking->uuid,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
             DB::commit();
 
             return response()->json([
                 'status' => 'Success',
                 'message' => 'Appointment Done and review submitted.',
             ], 200);
-
-            //TODO::Send mail to client and and healthworker on status update
 
         } catch (\Exception $e) {
             DB::rollBack();
