@@ -15,6 +15,16 @@ class HealthworkerReview extends BaseModel
         'reviewed_at',
     ];
 
+    /**
+     * The attributes that should be cast to native types.
+     *
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'reviewed_at' => 'datetime',
+        'rating' => 'integer',
+    ];
+
     public function bookingAppt()
     {
         return $this->belongsTo(BookingAppt::class, 'booking_appt_uuid', 'uuid');
