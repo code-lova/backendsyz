@@ -116,4 +116,19 @@ return [
         'name' => env('MAIL_FROM_NAME', 'Example'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Support Email Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configuration for support-related emails to keep them separate
+    | from general notifications.
+    |
+    */
+
+    'support' => [
+        'address' => env('MAIL_SUPPORT_ADDRESS', 'support@supracarer.com'),
+        'name' => env('MAIL_SUPPORT_NAME', 'support@supracarer.com'),
+    ],
+
 ];

@@ -5,8 +5,8 @@ namespace App\Http\Controllers\Healthworker;
 use App\Http\Controllers\Controller;
 use App\Mail\NewSupportMessage;
 use App\Models\SupportMessage;
+use App\Services\ReferenceService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Validator;
 
 class SupportController extends Controller
 {
-    public function createSupportMessage(Request $request){
+    public function createSupportMessage(Request $request, ReferenceService $referenceService){
         try{
 
             $user = $request->user();
@@ -35,6 +35,11 @@ class SupportController extends Controller
 
             $supportMessage = new SupportMessage();
             $supportMessage->user_uuid = $user->uuid; // If authenticated
+            $supportMessage->reference = $referenceService->getReference(
+                SupportMessage::class,
+                'reference',
+                'SUPPORT'
+            );
             $supportMessage->subject = $request->subject;
             $supportMessage->message = $request->message;
             $supportMessage->status = 'Pending';
