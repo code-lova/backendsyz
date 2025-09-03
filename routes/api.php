@@ -85,6 +85,10 @@ Route::middleware(['auth:sanctum', 'role:admin', 'ability:server:admin'])->group
         Route::put('/admin/updateprofile', 'updateAdminProfile');
         Route::get('/admin/ratings-review', 'fetchHealthWorkerRatingReview');
 
+        //SUPPORT MESSAGE FROM HEALTH WORKERS
+        Route::get('/admin/support-messages', 'listSupportMessages');
+        Route::post('/admin/support-messages/reply', 'replySupportMessage');
+
     });
 
     Route::controller(\App\Http\Controllers\Admin\UserManagementController::class)->group(function (){
@@ -102,7 +106,6 @@ Route::middleware(['auth:sanctum', 'role:admin', 'ability:server:admin'])->group
         Route::put('/booking-request/{id}/done', 'doneBookingRequest');
         Route::put('/booking-request/{id}/cancel', 'cancelBookingRequest');
         Route::delete('/booking-request/{id}/delete', 'destroyBookingRequest');
-
     });
 
 
@@ -111,8 +114,16 @@ Route::middleware(['auth:sanctum', 'role:admin', 'ability:server:admin'])->group
         Route::post('/admin/support-tickets/{id}/reply', 'replyToTicket');
         Route::get('/admin/support-tickets/{id}', 'getSupportTicketById');
         Route::put('/admin/support-tickets/{id}/status', 'updateTicketStatus');
-
     });
+
+
+
+    Route::controller(\App\Http\Controllers\Admin\SendEmailController::class)->group(function (){
+
+        Route::post('/admin/send-email', 'sendEmail');
+    });
+
+
 
 });
 

@@ -4,11 +4,17 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\AdminResource;
+use App\Mail\AdminReplyHwSupportMsg;
 use App\Models\HealthworkerReview;
+use App\Models\SupportMessage;
+use App\Models\SupportMessageReply;
+use App\Services\ReferenceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class AdminController extends Controller
@@ -97,7 +103,7 @@ class AdminController extends Controller
 
     /**
      * Fetch all health worker ratings and reviews for admin.
-     * 
+     *
      * Retrieves comprehensive rating and review data with search, filtering,
      * pagination, and summary statistics for administrative oversight.
      *
@@ -180,12 +186,12 @@ class AdminController extends Controller
             // Apply medical service filter - simplified approach
             if ($request->has('medical_service') && $request->medical_service) {
                 $medicalService = $request->medical_service;
-                
+
                 Log::info('Medical service filter applied', [
                     'medical_service' => $medicalService,
                     'admin_id' => Auth::id()
                 ]);
-                
+
                 $query->whereHas('bookingAppt.others', function($othersQuery) use ($medicalService) {
                     $othersQuery->where('medical_services', 'like', '%"' . $medicalService . '"%');
                 });
@@ -231,13 +237,13 @@ class AdminController extends Controller
             $processedReviews = $reviews->getCollection()->map(function ($review) {
                 // Calculate review age
                 try {
-                    $reviewAge = $review->reviewed_at instanceof \Carbon\Carbon 
+                    $reviewAge = $review->reviewed_at instanceof \Carbon\Carbon
                         ? $review->reviewed_at->diffForHumans()
                         : \Carbon\Carbon::parse($review->reviewed_at)->diffForHumans();
                 } catch (\Exception $e) {
                     $reviewAge = 'Unknown';
                 }
-                
+
                 // Get medical services
                 $medicalServices = collect();
                 if ($review->bookingAppt && $review->bookingAppt->others) {
@@ -252,7 +258,7 @@ class AdminController extends Controller
                 // Add computed fields
                 $review->review_age = $reviewAge;
                 $review->medical_services_provided = $medicalServices;
-                
+
                 // Calculate appointment duration
                 if ($review->bookingAppt && $review->bookingAppt->start_date && $review->bookingAppt->end_date) {
                     try {
@@ -268,7 +274,7 @@ class AdminController extends Controller
                 // Add rating description
                 $ratingDescriptions = [
                     1 => 'Very Poor',
-                    2 => 'Poor', 
+                    2 => 'Poor',
                     3 => 'Average',
                     4 => 'Good',
                     5 => 'Excellent'
@@ -385,12 +391,256 @@ class AdminController extends Controller
             ]);
 
             return response()->json([
-                'message' => app()->environment('production') 
-                    ? 'Something went wrong while retrieving reviews data.' 
+                'message' => app()->environment('production')
+                    ? 'Something went wrong while retrieving reviews data.'
                     : $e->getMessage(),
                 'error' => !app()->environment('production') ? $e->getMessage() : null
             ], 500);
         }
     }
+
+
+    /**
+     * List all support messages for admin with filtering, search, and pagination.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function listSupportMessages(Request $request)
+    {
+        try {
+            // Validate request parameters
+            $validator = Validator::make($request->all(), [
+                'status' => 'nullable|string|in:Pending,Replied',
+                'sort' => 'nullable|string|in:newest,oldest,subject_asc,subject_desc',
+                'page' => 'nullable|integer|min:1',
+                'per_page' => 'nullable|integer|min:1|max:100',
+                'limit' => 'nullable|integer|min:1|max:100',
+                'search' => 'nullable|string|max:255',
+                'user_uuid' => 'nullable|uuid|exists:users,uuid',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'message' => 'Validation failed.',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            // Get authenticated admin user
+            $admin = Auth::user();
+            if (!$admin || $admin->role !== 'admin') {
+                return response()->json([
+                    'message' => 'Unauthorized. Only admins can access support messages.'
+                ], 403);
+            }
+
+            // Build the query for support messages
+            $query = SupportMessage::with([
+                'user:uuid,name,email,role,image,phone',
+                'replies:uuid,support_message_uuid,admin_reply,created_at'
+            ]);
+
+            // Apply search filter
+            if ($request->search) {
+                $search = $request->search;
+                $query->where(function($q) use ($search) {
+                    $q->where('subject', 'like', "%$search%")
+                      ->orWhere('message', 'like', "%$search%")
+                      ->orWhere('reference', 'like', "%$search%")
+                      ->orWhereHas('user', function($userQuery) use ($search) {
+                          $userQuery->where('name', 'like', "%$search%")
+                                   ->orWhere('email', 'like', "%$search%");
+                      });
+                });
+            }
+
+            // Apply status filter
+            if ($request->status) {
+                $query->where('status', $request->status);
+            }
+
+            // Apply user filter
+            if ($request->user_uuid) {
+                $query->where('user_uuid', $request->user_uuid);
+            }
+
+            // Apply sorting
+            switch ($request->sort) {
+                case 'oldest':
+                    $query->orderBy('created_at', 'asc');
+                    break;
+                case 'subject_asc':
+                    $query->orderBy('subject', 'asc');
+                    break;
+                case 'subject_desc':
+                    $query->orderBy('subject', 'desc');
+                    break;
+                default:
+                    $query->orderBy('created_at', 'desc');
+                    break;
+            }
+
+            // Get pagination parameters
+            $perPage = $request->per_page ?? $request->limit ?? 15;
+
+            // Execute the paginated query
+            $messages = $query->paginate($perPage);
+
+            // Add reply count to each message
+            $messages->getCollection()->transform(function ($message) {
+                $message->reply_count = $message->replies->count();
+                return $message;
+            });
+
+            return response()->json([
+                'status' => 'Success',
+                'message' => 'Support messages retrieved successfully.',
+                'data' => $messages->items(),
+                'meta' => [
+                    'total' => $messages->total(),
+                    'per_page' => $messages->perPage(),
+                    'current_page' => $messages->currentPage(),
+                    'last_page' => $messages->lastPage(),
+                    'from' => $messages->firstItem(),
+                    'to' => $messages->lastItem(),
+                    'has_more_pages' => $messages->hasMorePages()
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::error('Support messages retrieval failed', [
+                'admin_id' => Auth::id(),
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'message' => 'Failed to retrieve support messages.',
+                'error' => !app()->environment('production') ? $e->getMessage() : null
+            ], 500);
+        }
+    }
+
+    /**
+     * Reply to a support message as admin.
+     *
+     * Creates a reply to a user's support message and updates the message status.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function replySupportMessage(Request $request, ReferenceService $referenceService)
+    {
+        try {
+            // Validate request data
+            $validator = Validator::make($request->all(), [
+                'support_message_uuid' => 'required|uuid|exists:support_messages,uuid',
+                'admin_reply' => 'required|string|min:10|max:5000',
+            ], [
+                'support_message_uuid.required' => 'Support message ID is required.',
+                'support_message_uuid.exists' => 'Invalid support message.',
+                'admin_reply.required' => 'Reply message is required.',
+                'admin_reply.min' => 'Reply must be at least 10 characters.',
+                'admin_reply.max' => 'Reply must not exceed 5000 characters.',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'message' => 'Validation failed.',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            // Get authenticated admin user
+            $admin = Auth::user();
+            if (!$admin || $admin->role !== 'admin') {
+                return response()->json([
+                    'message' => 'Unauthorized. Only admins can reply to support messages.'
+                ], 403);
+            }
+
+            // Get the support message
+            $supportMessage = SupportMessage::with('user')->where('uuid', $request->support_message_uuid)->first();
+
+            if (!$supportMessage) {
+                return response()->json([
+                    'message' => 'Support message not found.'
+                ], 404);
+            }
+
+            // Create the reply
+            $reply = SupportMessageReply::create([
+                'support_message_uuid' => $supportMessage->uuid,
+                'admin_reply' => $request->admin_reply,
+                'reference' => $referenceService->getReference(
+                    SupportMessageReply::class,
+                    'reference',
+                    'SUPPORT'
+                ),
+            ]);
+
+            // Update support message status to 'Replied'
+            $supportMessage->update(['status' => 'Replied']);
+
+            // Load the created reply with fresh data
+            $reply->load('supportMessage.user');
+
+            // Send email notification to the health worker
+            try {
+                Mail::to($supportMessage->user->email)->send(
+                    new AdminReplyHwSupportMsg($supportMessage, $reply, $supportMessage->user)
+                );
+
+            } catch (\Exception $emailException) {
+                // Log email failure but don't fail the entire operation
+                Log::error('Failed to send admin reply email notification', [
+                    'admin_id' => $admin->id,
+                    'support_message_uuid' => $supportMessage->uuid,
+                    'reply_uuid' => $reply->uuid,
+                    'user_email' => $supportMessage->user->email,
+                    'error' => $emailException->getMessage()
+                ]);
+            }
+
+            return response()->json([
+                'status' => 'Success',
+                'message' => 'Reply sent successfully.',
+                'data' => [
+                    'reply' => [
+                        'uuid' => $reply->uuid,
+                        'admin_reply' => $reply->admin_reply,
+                        'reference' => $reply->reference,
+                        'created_at' => $reply->created_at,
+                        'support_message' => [
+                            'uuid' => $supportMessage->uuid,
+                            'subject' => $supportMessage->subject,
+                            'status' => $supportMessage->status,
+                            'user' => [
+                                'uuid' => $supportMessage->user->uuid,
+                                'name' => $supportMessage->user->name,
+                                'email' => $supportMessage->user->email,
+                            ]
+                        ]
+                    ]
+                ]
+            ], 201);
+
+        } catch (\Exception $e) {
+            Log::error('Support message reply failed', [
+                'admin_id' => Auth::id(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'message' => app()->environment('production')
+                    ? 'Something went wrong while sending the reply.'
+                    : $e->getMessage(),
+                'error' => !app()->environment('production') ? $e->getMessage() : null
+            ], 500);
+        }
+    }
+
+
 
 }
