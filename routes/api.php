@@ -88,7 +88,6 @@ Route::middleware(['auth:sanctum', 'role:admin', 'ability:server:admin'])->group
         //SUPPORT MESSAGE FROM HEALTH WORKERS
         Route::get('/admin/support-messages', 'listSupportMessages');
         Route::post('/admin/support-messages/reply', 'replySupportMessage');
-
     });
 
     Route::controller(\App\Http\Controllers\Admin\UserManagementController::class)->group(function (){
@@ -119,8 +118,8 @@ Route::middleware(['auth:sanctum', 'role:admin', 'ability:server:admin'])->group
 
 
     Route::controller(\App\Http\Controllers\Admin\SendEmailController::class)->group(function (){
-
-        Route::post('/admin/send-email', 'sendEmail');
+        //SEND EMAILS TO USERS
+        Route::post('/admin/send-email', 'sendEmails');
     });
 
 

@@ -1,5 +1,5 @@
 @php
-    $logoUrl = "https://www.supracarer.com/assets/images/logo.png"; // Place your logo in public/uploads/profile/logo.png
+    $logoUrl = "https://www.supracarer.com/assets/images/logo.png";
 @endphp
 <!DOCTYPE html>
 <html lang="en">
