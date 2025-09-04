@@ -57,6 +57,7 @@ class User extends Authenticatable implements CanResetPassword
         'two_factor_enabled',
         'two_factor_code',
         'two_factor_expires_at',
+        'is_active',
     ];
 
     /**
@@ -79,7 +80,24 @@ class User extends Authenticatable implements CanResetPassword
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_active' => 'string', // ENUM('0', '1') - cast as string for consistency
         ];
+    }
+
+    /**
+     * Check if user is active (helper method)
+     */
+    public function isActive(): bool
+    {
+        return $this->is_active === '1';
+    }
+
+    /**
+     * Check if user is blocked (helper method)
+     */
+    public function isBlocked(): bool
+    {
+        return $this->is_active === '0';
     }
 
     public function sessions()

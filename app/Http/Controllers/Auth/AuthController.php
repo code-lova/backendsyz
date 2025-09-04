@@ -116,6 +116,23 @@ class AuthController extends Controller
                 ], 401);
             }
 
+            // Check if user account is blocked
+            if ($user->is_active === '0') {
+                Log::warning('Blocked user attempted to login', [
+                    'user_id' => $user->id,
+                    'user_uuid' => $user->uuid,
+                    'email' => $user->email,
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $request->header('User-Agent'),
+                    'timestamp' => now()
+                ]);
+
+                return response()->json([
+                    'message' => 'Your account has been suspended. Please contact support for assistance.',
+                    'error_code' => 'ACCOUNT_BLOCKED'
+                ], 403);
+            }
+
              // If 2FA is enabled, send OTP and stop here (no token yet)
             if ($user->two_factor_enabled) {
                 // 1) Generate + hash OTP (store hash, email raw)
@@ -219,6 +236,23 @@ class AuthController extends Controller
                 return response()->json([
                     'message' => '2FA is not enabled for this account.'
                 ], 422);
+            }
+
+            // Check if user account is blocked
+            if ($user->is_active === '0') {
+                Log::warning('Blocked user attempted 2FA verification', [
+                    'user_id' => $user->id,
+                    'user_uuid' => $user->uuid,
+                    'email' => $user->email,
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $request->header('User-Agent'),
+                    'timestamp' => now()
+                ]);
+
+                return response()->json([
+                    'message' => 'Your account has been suspended. Please contact support for assistance.',
+                    'error_code' => 'ACCOUNT_BLOCKED'
+                ], 403);
             }
 
             if (!$user->two_factor_code || !$user->two_factor_expires_at) {
@@ -325,6 +359,14 @@ class AuthController extends Controller
             return response()->json([
                 'message' => '2FA is not enabled for this account.'
             ], 422);
+        }
+
+        // Check if user account is blocked
+        if ($user->is_active === '0') {
+            return response()->json([
+                'message' => 'Your account has been suspended. Please contact support for assistance.',
+                'error_code' => 'ACCOUNT_BLOCKED'
+            ], 403);
         }
 
         $otp = (string) random_int(100000, 999999);

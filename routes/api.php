@@ -92,8 +92,9 @@ Route::middleware(['auth:sanctum', 'role:admin', 'ability:server:admin'])->group
 
     Route::controller(\App\Http\Controllers\Admin\UserManagementController::class)->group(function (){
         Route::get('/allusers', 'listUsers');
-        Route::put('/user/{id}/update-user', 'updateUser');
-        Route::delete('/user/{id}', 'deleteUser');
+        Route::put('/user/{uuid}/update-user', 'updateUser');
+        Route::put('/user/{uuid}/block', 'blockUser');
+        Route::delete('/user/{uuid}', 'deleteUser'); // Has not been implemented yet
 
         //Fetch all users that have roles health workers
         Route::get('/all-health-workers', 'getHealthWorkers');
