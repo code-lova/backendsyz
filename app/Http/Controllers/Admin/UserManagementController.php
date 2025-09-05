@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\BookingAppt;
+use App\Models\DeletedAccounts;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -375,6 +376,53 @@ class UserManagementController extends Controller
                     ? 'Something went wrong while updating user status.' 
                     : $e->getMessage(),
                 'error' => !app()->environment('production') ? $e->getMessage() : null
+            ], 500);
+        }
+    }
+
+
+    //Get all deleted user accounts for administrator
+    public function getDeletedAccounts(){
+        try {
+            $query = DeletedAccounts::query();
+
+            // Search by name or email
+            if (request()->has('search') && request('search')) {
+                $search = request('search');
+                $query->where(function($q) use ($search) {
+                    $q->where('fullname', 'like', "%$search%")
+                      ->orWhere('email', 'like', "%$search%");
+                });
+            }
+
+        
+            // Sort fullname
+            $sortBy = request('sort_by') ?? 'created_at';
+            $sortOrder = strtolower(request('sort_order') ?? 'desc'); // default desc (newest first)
+            $allowedSortFields = ['fullname', 'created_at'];
+            $allowedSortOrders = ['asc', 'desc'];
+            if (in_array($sortBy, $allowedSortFields) && in_array($sortOrder, $allowedSortOrders)) {
+                $query->orderBy($sortBy, $sortOrder);
+            } else {
+                $query->orderBy('created_at', 'desc');
+            }
+
+            $users = $query->get();
+
+            return response()->json([
+                'status' => 'success',
+                'users' => $users
+            ], 200);
+        } catch (\Exception $e) {
+            // Log error for debugging
+            Log::error('fetching all deleted account failed', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => app()->environment('production') ? 'Something went wrong.' : $e->getMessage(),
+                'error' => $e->getMessage()
             ], 500);
         }
     }
