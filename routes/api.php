@@ -77,6 +77,7 @@ Route::middleware(['auth:sanctum', 'role:admin', 'ability:server:admin'])->group
     // Other admin routes
     Route::controller(\App\Http\Controllers\Admin\DashboardController::class)->group(function (){
         Route::get('/admin/dashboard', 'index');
+        Route::get('/admin/total-appointments', 'getTotalAppointmentCount');
 
     });
 
@@ -98,6 +99,9 @@ Route::middleware(['auth:sanctum', 'role:admin', 'ability:server:admin'])->group
 
         //Fetch all users that have roles health workers
         Route::get('/all-health-workers', 'getHealthWorkers');
+
+        //get all deleted accounts
+        Route::get('/users/deleted-accounts', 'getDeletedAccounts');
     });
 
     Route::controller(\App\Http\Controllers\Admin\BookingRequests::class)->group(function (){
