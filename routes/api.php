@@ -76,8 +76,11 @@ Route::middleware(['auth:sanctum'])->group(function (){
 Route::middleware(['auth:sanctum', 'role:admin', 'ability:server:admin'])->group(function (){
     // Other admin routes
     Route::controller(\App\Http\Controllers\Admin\DashboardController::class)->group(function (){
-        Route::get('/admin/dashboard', 'index');
-        Route::get('/admin/total-appointments', 'getTotalAppointmentCount');
+        Route::get('/admin/dashboard', 'index'); // Comprehensive dashboard statistics
+        Route::get('/admin/appointment-statistics', 'getAppointmentCountPerMonth'); // Detailed appointment breakdown
+
+        // appointment status count stats
+        Route::get('/admin/appointment-status-count', 'getAppointmentStatusCountStats');
 
     });
 
