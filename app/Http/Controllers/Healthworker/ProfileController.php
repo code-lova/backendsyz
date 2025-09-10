@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Healthworker;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\HealthWorkerResource;
+use App\Models\GuidedRateSystem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -15,8 +16,35 @@ class ProfileController extends Controller
 
     //Geting Healhworkder details
     public function authHealthDetails(Request $request){
-        $user = Auth::user();
-        return new HealthWorkerResource($user);
+        try {
+            $user = Auth::user();
+
+            // Check if the health worker has a guided rate system
+            $hasGuidedRateSystem = GuidedRateSystem::where('user_uuid', $user->uuid)->exists();
+
+            // Get the health worker resource
+            $healthWorkerResource = new HealthWorkerResource($user);
+            $healthWorkerData = $healthWorkerResource->toArray($request);
+
+            // Add the guided rate system status to the response
+            $healthWorkerData['has_guided_rate_system'] = $hasGuidedRateSystem;
+
+            return response()->json([
+                'data' => $healthWorkerData
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to fetch health worker details', [
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'message' => 'Failed to fetch health worker details.',
+                'error' => !app()->environment('production') ? $e->getMessage() : null
+            ], 500);
+        }
     }
 
 
