@@ -200,7 +200,7 @@ class BookingAppointmentController extends Controller
             // Build the query
             $query = BookingAppt::with([
                 'user:uuid,name,email,phone,image,country',
-                'healthWorker:uuid,name,email,phone,image,country',
+                'healthWorker:uuid,name,email,phone,image,country,region',
                 'others:uuid,booking_appts_uuid,medical_services,other_extra_service'
             ])->where('user_uuid', $user->uuid);
 
@@ -359,7 +359,7 @@ class BookingAppointmentController extends Controller
                 try {
                     $clientEmail = $user->email ?? null;
                     $adminEmail = config('mail.admin_email') ?? env('ADMIN_EMAIL');
-                   
+
                     // Email data for client
                     $mailDataForClient = [
                         'booking_reference' => $booking->booking_reference,
@@ -367,7 +367,7 @@ class BookingAppointmentController extends Controller
                         'client_name' => $user->name ?? '',
                         'cancelled_at' => now()->toDateTimeString(),
                     ];
-                    
+
                     // Email data for admin (different messaging)
                     $mailDataForAdmin = [
                         'booking_reference' => $booking->booking_reference,
@@ -612,7 +612,7 @@ class BookingAppointmentController extends Controller
                 $clientEmail = $user->email ?? null;
                 $healthworkerEmail = $booking->healthWorker->email ?? null;
                 $adminEmail = config('mail.admin_email') ?? env('ADMIN_EMAIL');
-                
+
                 // Email data for client
                 $mailDataForClient = [
                     'booking_reference' => $booking->booking_reference,
@@ -621,7 +621,7 @@ class BookingAppointmentController extends Controller
                     'healthworker_name' => $booking->healthWorker->name ?? '',
                     'completed_at' => now()->toDateTimeString(),
                 ];
-                
+
                 // Email data for admin (different messaging)
                 $mailDataForAdmin = [
                     'booking_reference' => $booking->booking_reference,
@@ -631,7 +631,7 @@ class BookingAppointmentController extends Controller
                     'completed_at' => now()->toDateTimeString(),
                     'is_for_admin' => true, // Flag to identify admin email
                 ];
-                
+
                 // Email data for health worker (different addressing)
                 $mailDataForHealthWorker = [
                     'booking_reference' => $booking->booking_reference,
@@ -641,7 +641,7 @@ class BookingAppointmentController extends Controller
                     'completed_at' => now()->toDateTimeString(),
                     'is_for_healthworker' => true, // Flag to identify health worker email
                 ];
-                
+
                 if ($clientEmail) {
                     Mail::to($clientEmail)->send(new BookingStatusNotification($mailDataForClient));
                 }

@@ -46,7 +46,13 @@ class NewSupportMessage extends Mailable
     {
         return new Content(
             view: 'emails.support_message',
-            with: $this->mailData,
+            with: [
+                'user_name' => $this->mailData['user_name'],
+                'user_email' => $this->mailData['user_email'], 
+                'subject' => $this->mailData['subject'],
+                'support_message' => $this->mailData['support_message'],
+                'reference' => $this->mailData['reference'] ?? '',
+            ]
         );
     }
 }

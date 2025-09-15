@@ -6,7 +6,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>New Support Ticket Submitted</title>
+    <title>Booking Confirmation</title>
     <style>
         /* Email client reset */
         #outlook a { padding: 0; }
@@ -74,14 +74,14 @@
             margin-bottom: 30px;
             line-height: 1.8;
         }
-        .ticket-details {
+        .booking-details {
             background-color: #f8f9fa;
-            border-left: 4px solid #dc3545;
+            border-left: 4px solid #667eea;
             padding: 20px;
             margin: 25px 0;
             border-radius: 5px;
         }
-        .ticket-details h3 {
+        .booking-details h3 {
             margin-top: 0;
             color: #2c3e50;
             font-size: 18px;
@@ -142,13 +142,9 @@
             line-height: 1;
             white-space: nowrap;
         }
-        .status-pending {
-            background-color: #fff3cd;
-            color: #856404;
-        }
-        .priority-high {
-            background-color: #f8d7da;
-            color: #721c24;
+        .status-confirmed {
+            background-color: #d4edda;
+            color: #155724;
         }
         .cta-section {
             text-align: center;
@@ -227,7 +223,7 @@
             .footer {
                 padding: 20px 15px;
             }
-            .ticket-details {
+            .booking-details {
                 padding: 15px;
                 margin: 20px 0;
             }
@@ -259,7 +255,7 @@
             .footer {
                 padding: 15px 10px;
             }
-            .ticket-details {
+            .booking-details {
                 padding: 12px;
                 margin: 15px 0;
             }
@@ -320,7 +316,7 @@
             .content {
                 padding: 12px 8px;
             }
-            .ticket-details {
+            .booking-details {
                 padding: 10px;
                 margin: 12px 0;
             }
@@ -394,104 +390,125 @@
 
                     <!-- Content -->
                     <div class="content">
-                        <div class="greeting">
-                            Hello Admin,
-                        </div>
+            <div class="greeting">
+                Hello {{ $recipient->name }},
+            </div>
 
-                        <div class="message">
-                            A new support ticket has been submitted by a health worker and requires your attention. Please review the details below and respond as soon as possible.
-                        </div>
+            @if($recipientType === 'admin')
+                <div class="message">
+                    We're pleased to inform you that <strong>{{ $appointment->healthWorker->name }}</strong> has confirmed the booking request for appointment <strong>{{ $appointment->booking_reference }}</strong>.
+                </div>
+                <div class="message">
+                    The appointment is now confirmed and ready to proceed. The client <strong>{{ $appointment->user->name }}</strong> will be notified of this confirmation.
+                </div>
+            @else
+                <div class="message">
+                    Thank you for confirming the booking request! Your appointment <strong>{{ $appointment->booking_reference }}</strong> has been successfully confirmed.
+                </div>
+                <div class="message">
+                    You can now prepare for the upcoming appointment. Please ensure you have all the necessary information and are ready to provide the best care to your client.
+                </div>
+            @endif
 
-                        <div class="message">
-                            This ticket has been automatically assigned to the support team for processing. The health worker has been notified that their request has been received.
-                        </div>
+            <!-- Booking Details -->
+            <div class="booking-details">
+                <h3>📋 Booking Details</h3>
 
-                        <!-- Ticket Details -->
-                        <div class="ticket-details">
-                            <h3>🚨 New Support Ticket Details</h3>
+                <div class="detail-row">
+                    <span class="detail-label">Reference Number:</span>
+                    <span class="detail-value">{{ $appointment->booking_reference }}</span>
+                </div>
 
-                            <div class="detail-row">
-                                <span class="detail-label">Reference Number:</span>
-                                <span class="detail-value">{{ $reference }}</span>
-                            </div>
+                <div class="detail-row">
+                    <span class="detail-label">Status:</span>
+                    <span class="detail-value">
+                        <span class="status-badge status-confirmed">Confirmed</span>
+                    </span>
+                </div>
 
-                            <div class="detail-row">
-                                <span class="detail-label">Status:</span>
-                                <span class="detail-value">
-                                    <span class="status-badge status-pending">New Ticket</span>
-                                </span>
-                            </div>
+                <div class="detail-row">
+                    <span class="detail-label">Client Name:</span>
+                    <span class="detail-value">{{ $appointment->user->name }}</span>
+                </div>
 
-                            <div class="detail-row">
-                                <span class="detail-label">Submitted By:</span>
-                                <span class="detail-value">{{ $user_name }}</span>
-                            </div>
+                @if($recipientType === 'admin')
+                <div class="detail-row">
+                    <span class="detail-label">Health Worker:</span>
+                    <span class="detail-value">{{ $appointment->healthWorker->name }}</span>
+                </div>
+                @endif
 
-                            <div class="detail-row">
-                                <span class="detail-label">User Email:</span>
-                                <span class="detail-value">{{ $user_email }}</span>
-                            </div>
+                <div class="detail-row">
+                    <span class="detail-label">Care Type:</span>
+                    <span class="detail-value">{{ $appointment->care_type }}</span>
+                </div>
 
-                            <div class="detail-row">
-                                <span class="detail-label">Subject:</span>
-                                <span class="detail-value">{{ $subject }}</span>
-                            </div>
+                <div class="detail-row">
+                    <span class="detail-label">Start Date:</span>
+                    <span class="detail-value">{{ date('F j, Y', strtotime($appointment->start_date)) }}</span>
+                </div>
 
-                            <div class="detail-row">
-                                <span class="detail-label">Message:</span>
-                                <span class="detail-value">{{ $support_message }}</span>
-                            </div>
+                <div class="detail-row">
+                    <span class="detail-label">End Date:</span>
+                    <span class="detail-value">{{ date('F j, Y', strtotime($appointment->end_date)) }}</span>
+                </div>
 
-                            <div class="detail-row">
-                                <span class="detail-label">Priority:</span>
-                                <span class="detail-value">
-                                    <span class="status-badge priority-high">High</span>
-                                </span>
-                            </div>
+                <div class="detail-row">
+                    <span class="detail-label">Time:</span>
+                    <span class="detail-value">{{ date('g:i', strtotime($appointment->start_time)) }} {{ $appointment->start_time_period }} - {{ date('g:i', strtotime($appointment->end_time)) }} {{ $appointment->end_time_period }}</span>
+                </div>
 
-                            <div class="detail-row">
-                                <span class="detail-label">Submitted At:</span>
-                                <span class="detail-value">{{ date('F j, Y g:i A') }}</span>
-                            </div>
-                        </div>
+                <div class="detail-row">
+                    <span class="detail-label">Duration:</span>
+                    <span class="detail-value">{{ $appointment->care_duration }}, {{ $appointment->care_duration_value }}hrs</span>
+                </div>
 
-                        <div class="cta-section">
-                            <a href="https://www.supracarer.com/signin" class="btn">View Support Dashboard</a>
-                        </div>
+                <div class="detail-row">
+                    <span class="detail-label">Location:</span>
+                    <span class="detail-value">{{ $appointment->user->address }}, {{ $appointment->user->region }}, {{ $appointment->user->country }}</span>
+                </div>
 
-                        <div class="message">
-                            <strong>Recommended Actions:</strong><br>
-                            • Review the ticket details carefully<br>
-                            • Respond within 4-6 hours during business hours<br>
-                            • Update ticket status as you progress<br>
-                            • Contact the health worker directly if needed for clarification
-                        </div>
+                <div class="detail-row">
+                    <span class="detail-label">Confirmed At:</span>
+                    <span class="detail-value">{{ date('F j, Y g:i A') }}</span>
+                </div>
+            </div>
 
-                        <div class="message">
-                            This is a high-priority notification as it comes from a health worker who may need immediate assistance to provide care services.
+            @if($recipientType === 'healthworker')
+                <div class="cta-section">
+                    <a href="https://www.supracarer.com/signin" class="btn">View Appointment Details</a>
+                </div>
+            @endif
+
+            <div class="message">
+                @if($recipientType === 'admin')
+                    You can monitor the progress of this appointment through the admin dashboard. If you need to make any changes or have concerns, please coordinate with the health worker directly.
+                @else
+                    If you have any questions or need to make changes to this appointment, please contact our support team or reach out through the platform.
+                @endif
+            </div>
+            </div>
+
+                <!-- Footer -->
+                <div class="footer">
+                    <div class="footer-content">
+                        <h4>SupraCarer</h4>
+                        <p>Above and beyond care</p>
+                        <p>Professional Healthcare Services Platform</p>
+
+                        <div class="social-links">
+                            <a href="#">📧 support@supracarer.com</a>
+                            <a href="#">🌐 www.supracarer.com</a>
+                            <a href="#">📞 +1 (555) 123-4567</a>
                         </div>
                     </div>
 
-                    <!-- Footer -->
-                    <div class="footer">
-                        <div class="footer-content">
-                            <h4>SupraCarer</h4>
-                            <p>Above and beyond care</p>
-                            <p>Professional Healthcare Services Platform</p>
-
-                            <div class="social-links">
-                                <a href="#">📧 support@supracarer.com</a>
-                                <a href="#">🌐 www.supracarer.com</a>
-                                <a href="#">📞 +1 (555) 123-4567</a>
-                            </div>
-                        </div>
-
-                        <div class="disclaimer">
-                            <p>This is an automated message from SupraCarer. Please do not reply to this email.</p>
-                            <p>Use the admin dashboard to respond to this support ticket and communicate with the health worker.</p>
-                            <p>&copy; {{ date('Y') }} SupraCarer. All rights reserved.</p>
-                        </div>
+                    <div class="disclaimer">
+                        <p>This is an automated message from SupraCarer. Please do not reply to this email.</p>
+                        <p>If you have any questions, please contact our support team through the platform or visit our help center.</p>
+                        <p>&copy; {{ date('Y') }} SupraCarer. All rights reserved.</p>
                     </div>
+                </div>
                 </div>
             </td>
         </tr>

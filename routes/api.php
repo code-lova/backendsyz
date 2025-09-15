@@ -171,6 +171,14 @@ Route::middleware(['auth:sanctum', 'role:client', 'ability:server:client'])->gro
 
 Route::middleware(['auth:sanctum', 'role:healthworker', 'ability:server:healthworker'])->group(function (){
 
+    Route::controller(\App\Http\Controllers\Healthworker\DashboardController::class)->group(function (){
+        Route::get('/healthworker/count-appointments', 'getAppointmentCounts');
+        Route::get('/healthworker/ratings-stats', 'getRatingsStat'); // Rating statistics and trends
+        Route::get('/healthworker/monthly-appointment-stats', 'getAppointmentStatsPerMonth'); // Monthly appointment statistics
+        Route::get('/healthworker/recent-appointments', 'getRecentAppointments'); // 3 most recent appointments
+
+    });
+
     Route::controller(\App\Http\Controllers\Healthworker\ProfileController::class)->group(function (){
         Route::put('/healthworker/update', 'update');
         Route::get('/healthworker', 'authHealthDetails');
@@ -184,12 +192,14 @@ Route::middleware(['auth:sanctum', 'role:healthworker', 'ability:server:healthwo
     Route::controller(\App\Http\Controllers\Healthworker\SupportController::class)->group(function () {
         Route::post('/support', 'createSupportMessage');
         Route::get('/support', 'getSupportMessages');
-
     });
 
+    Route::controller(\App\Http\Controllers\Healthworker\BookingRequestController::class)->group(function (){
+        Route::get('/processing-booking-requests', 'fetchProcessingBookingRequests');
+        Route::put('/confirm-booking-request/{uuid}/accept', 'acceptBookingRequest');
+        Route::get('/healthworker/appointments', 'getHealthworkerAppointments');
+        Route::put('/update-booking-request/{uuid}/ongoing', 'updateToOngoingBookingRequest');
 
 
+    });
 });
-
-
-

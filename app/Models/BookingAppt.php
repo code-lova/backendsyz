@@ -35,6 +35,11 @@ class BookingAppt extends BaseModel
         'status',
         'reason_for_cancellation',
         'cancelled_by_user_uuid',
+        'confirmed_at',
+        'confirmed_by',
+        'started_at',
+        'updated_by',
+
     ];
 
     public function user(): BelongsTo
