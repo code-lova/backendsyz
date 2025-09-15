@@ -6,7 +6,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>New Support Ticket Submitted</title>
+    <title>Support Ticket Confirmation</title>
     <style>
         /* Email client reset */
         #outlook a { padding: 0; }
@@ -76,7 +76,7 @@
         }
         .ticket-details {
             background-color: #f8f9fa;
-            border-left: 4px solid #dc3545;
+            border-left: 4px solid #667eea;
             padding: 20px;
             margin: 25px 0;
             border-radius: 5px;
@@ -146,9 +146,13 @@
             background-color: #fff3cd;
             color: #856404;
         }
-        .priority-high {
-            background-color: #f8d7da;
-            color: #721c24;
+        .status-resolved {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .status-in-progress {
+            background-color: #d1ecf1;
+            color: #0c5460;
         }
         .cta-section {
             text-align: center;
@@ -395,80 +399,68 @@
                     <!-- Content -->
                     <div class="content">
                         <div class="greeting">
-                            Hello Admin,
+                            Hello {{ $user->name }},
                         </div>
 
                         <div class="message">
-                            A new support ticket has been submitted by a health worker and requires your attention. Please review the details below and respond as soon as possible.
+                            Thank you for contacting our support team! Your support ticket has been successfully created and our team has been notified.
                         </div>
 
                         <div class="message">
-                            This ticket has been automatically assigned to the support team for processing. The health worker has been notified that their request has been received.
+                            We've received your request and will review it promptly. You can expect a response from our support team within 24-48 hours during business days.
                         </div>
 
                         <!-- Ticket Details -->
                         <div class="ticket-details">
-                            <h3>🚨 New Support Ticket Details</h3>
+                            <h3>🎫 Support Ticket Details</h3>
 
                             <div class="detail-row">
                                 <span class="detail-label">Reference Number:</span>
-                                <span class="detail-value">{{ $reference }}</span>
+                                <span class="detail-value">{{ $ticketData['reference'] }}</span>
                             </div>
 
                             <div class="detail-row">
                                 <span class="detail-label">Status:</span>
                                 <span class="detail-value">
-                                    <span class="status-badge status-pending">New Ticket</span>
+                                    <span class="status-badge status-pending">Pending</span>
                                 </span>
-                            </div>
-
-                            <div class="detail-row">
-                                <span class="detail-label">Submitted By:</span>
-                                <span class="detail-value">{{ $user_name }}</span>
-                            </div>
-
-                            <div class="detail-row">
-                                <span class="detail-label">User Email:</span>
-                                <span class="detail-value">{{ $user_email }}</span>
                             </div>
 
                             <div class="detail-row">
                                 <span class="detail-label">Subject:</span>
-                                <span class="detail-value">{{ $subject }}</span>
+                                <span class="detail-value">{{ $ticketData['subject'] }}</span>
+                            </div>
+
+                            <div class="detail-row">
+                                <span class="detail-label">Your Email:</span>
+                                <span class="detail-value">{{ $user->email }}</span>
                             </div>
 
                             <div class="detail-row">
                                 <span class="detail-label">Message:</span>
-                                <span class="detail-value">{{ $support_message }}</span>
+                                <span class="detail-value">{{ $ticketData['message'] }}</span>
                             </div>
 
                             <div class="detail-row">
-                                <span class="detail-label">Priority:</span>
-                                <span class="detail-value">
-                                    <span class="status-badge priority-high">High</span>
-                                </span>
-                            </div>
-
-                            <div class="detail-row">
-                                <span class="detail-label">Submitted At:</span>
+                                <span class="detail-label">Created At:</span>
                                 <span class="detail-value">{{ date('F j, Y g:i A') }}</span>
                             </div>
                         </div>
 
                         <div class="cta-section">
-                            <a href="https://www.supracarer.com/signin" class="btn">View Support Dashboard</a>
+                            <a href="https://www.supracarer.com/signin" class="btn">View Your Tickets</a>
                         </div>
 
                         <div class="message">
-                            <strong>Recommended Actions:</strong><br>
-                            • Review the ticket details carefully<br>
-                            • Respond within 4-6 hours during business hours<br>
-                            • Update ticket status as you progress<br>
-                            • Contact the health worker directly if needed for clarification
+                            <strong>What happens next?</strong><br>
+                            • Our support team will review your request<br>
+                            • You'll receive updates via email<br>
+                            • You can track your ticket status in your dashboard<br>
+                            • For urgent matters, please call our support line
                         </div>
 
                         <div class="message">
-                            This is a high-priority notification as it comes from a health worker who may need immediate assistance to provide care services.
+                            If you have any additional questions or need immediate assistance, please don't hesitate to contact our support team through the platform or call our helpline.
                         </div>
                     </div>
 
@@ -488,7 +480,7 @@
 
                         <div class="disclaimer">
                             <p>This is an automated message from SupraCarer. Please do not reply to this email.</p>
-                            <p>Use the admin dashboard to respond to this support ticket and communicate with the health worker.</p>
+                            <p>If you have any questions, please contact our support team through the platform or visit our help center.</p>
                             <p>&copy; {{ date('Y') }} SupraCarer. All rights reserved.</p>
                         </div>
                     </div>

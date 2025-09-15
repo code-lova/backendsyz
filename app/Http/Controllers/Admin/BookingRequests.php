@@ -140,7 +140,7 @@ class BookingRequests extends Controller
      *
      * Allows admin to mark their pending appointments as Processing by updating the status
      * from 'Pending' to 'Processing' and optionally assign a health worker to the booking.
-     * Pending, Processing, and Confirmed appointments can be processed.
+     * Pending, Processing, and can be Confirmed by the health worker..
      *
      * @param \Illuminate\Http\Request $request
      * @param string $id The UUID of the booking appointment to process
@@ -194,20 +194,20 @@ class BookingRequests extends Controller
                 // Check if this is a health worker reassignment
                 $isReassignment = false;
                 $previousHealthWorker = null;
-                
+
                 if (isset($data['health_worker_uuid']) && $data['health_worker_uuid']) {
                     // Check if booking already has a health worker and it's different
                     if ($booking->health_worker_uuid && $booking->health_worker_uuid !== $data['health_worker_uuid']) {
                         $isReassignment = true;
                         $previousHealthWorker = User::where('uuid', $booking->health_worker_uuid)->first();
                     }
-                    
+
                     // Check if the health worker is already assigned to another appointment with Processing status
                     $existingProcessingAppointment = BookingAppt::where('health_worker_uuid', $data['health_worker_uuid'])
                         ->where('status', 'Processing')
                         ->where('uuid', '!=', $booking->uuid) // Exclude current booking
                         ->first();
-                    
+
                     if ($existingProcessingAppointment) {
                         return response()->json([
                             'message' => 'This health worker is already assigned to another appointment that is awaiting confirmation.',
@@ -218,15 +218,15 @@ class BookingRequests extends Controller
                         ], 422);
                     }
                 }
-                
+
                 // Prepare update data
                 $updateData = ['status' => 'Processing'];
-                
+
                 // Add health worker UUID if provided
                 if (isset($data['health_worker_uuid']) && $data['health_worker_uuid']) {
                     $updateData['health_worker_uuid'] = $data['health_worker_uuid'];
                 }
-                
+
                 // Update booking status to Processing and optionally assign health worker
                 $booking->update($updateData);
 
@@ -236,7 +236,7 @@ class BookingRequests extends Controller
                     $adminEmail = config('mail.admin_email') ?? env('ADMIN_EMAIL');
                     $healthWorkerEmail = null;
                     $healthWorker = null;
-                    
+
                     // Get health worker details if assigned
                     if (isset($data['health_worker_uuid']) && $data['health_worker_uuid']) {
                         $healthWorker = User::where('uuid', $data['health_worker_uuid'])->first();
@@ -244,7 +244,7 @@ class BookingRequests extends Controller
                             $healthWorkerEmail = $healthWorker->email;
                         }
                     }
-                    
+
                     // Base mail data
                     $baseMail = [
                         'booking_reference' => $booking->booking_reference,
@@ -256,11 +256,11 @@ class BookingRequests extends Controller
                         'start_time' => $booking->start_time,
                         'end_time' => $booking->end_time,
                     ];
-                    
+
                     // Send email to client
                     if ($clientEmail) {
                         $clientMailData = $baseMail;
-                        
+
                         if ($healthWorker) {
                             if ($isReassignment) {
                                 $clientMailData['health_worker_reassigned'] = true;
@@ -273,10 +273,10 @@ class BookingRequests extends Controller
                                 $clientMailData['health_worker_name'] = $healthWorker->name;
                             }
                         }
-                        
+
                         Mail::to($clientEmail)->send(new BookingStatusNotification($clientMailData));
                     }
-                    
+
                     // Send email to admin
                     if ($adminEmail) {
                         $adminMailData = $baseMail;
@@ -284,16 +284,16 @@ class BookingRequests extends Controller
                         if ($healthWorker) {
                             $adminMailData['healthworker_name'] = $healthWorker->name;
                         }
-                        
+
                         Mail::to($adminEmail)->send(new BookingStatusNotification($adminMailData));
                     }
-                    
+
                     // Send email to health worker if assigned
                     if ($healthWorkerEmail && $healthWorker) {
                         $healthWorkerMailData = $baseMail;
                         $healthWorkerMailData['is_for_healthworker'] = true;
                         $healthWorkerMailData['healthworker_name'] = $healthWorker->name;
-                        
+
                         Mail::to($healthWorkerEmail)->send(new BookingStatusNotification($healthWorkerMailData));
                     }
                 } catch (\Exception $e) {
@@ -352,7 +352,7 @@ class BookingRequests extends Controller
      * @param string $id The UUID of the booking appointment to cancel
      * @return \Illuminate\Http\JsonResponse
      */
-    public function doneBookingRequest(Request $request, $id) 
+    public function doneBookingRequest(Request $request, $id)
     {
 
         $request = request();
@@ -448,7 +448,7 @@ class BookingRequests extends Controller
                     'healthworker_name' => $booking->healthWorker->name ?? '',
                     'completed_at' => now()->toDateTimeString(),
                 ];
-                
+
                 // Email data for admin (different messaging)
                 $mailDataForAdmin = [
                     'booking_reference' => $booking->booking_reference,
@@ -458,7 +458,7 @@ class BookingRequests extends Controller
                     'completed_at' => now()->toDateTimeString(),
                     'is_for_admin' => true, // Flag to identify admin email
                 ];
-                
+
                 // Email data for health worker (different addressing)
                 $mailDataForHealthWorker = [
                     'booking_reference' => $booking->booking_reference,
@@ -468,7 +468,7 @@ class BookingRequests extends Controller
                     'completed_at' => now()->toDateTimeString(),
                     'is_for_healthworker' => true, // Flag to identify health worker email
                 ];
-                
+
                 if ($clientEmail) {
                     Mail::to($clientEmail)->send(new BookingStatusNotification($mailDataForClient));
                 }
@@ -571,7 +571,7 @@ class BookingRequests extends Controller
                 try {
                     $clientEmail = $booking->user->email ?? null;
                     $adminEmail = config('mail.admin_email') ?? env('ADMIN_EMAIL');
-                    
+
                     // Email data for client
                     $mailDataForClient = [
                         'booking_reference' => $booking->booking_reference,
@@ -579,7 +579,7 @@ class BookingRequests extends Controller
                         'client_name' => $booking->user->name ?? '',
                         'cancelled_at' => now()->toDateTimeString(),
                     ];
-                    
+
                     // Email data for admin (different messaging)
                     $mailDataForAdmin = [
                         'booking_reference' => $booking->booking_reference,
