@@ -18,9 +18,16 @@ jobs:
       uses: shivammathur/setup-php@v2
       with:
         php-version: 8.3
+        extensions: mbstring, xml, ctype, iconv, intl, pdo_sqlite, dom, filter, gd, iconv, json, mbstring, pdo
+
+    - name: Copy Environment File
+      run: php -r "file_exists('.env') || copy('.env.example', '.env');"
 
     - name: Install Composer Dependencies
       run: composer install --optimize-autoloader --no-dev --no-progress --no-interaction --prefer-dist
+
+    - name: Generate Application Key
+      run: php artisan key:generate
 
     - name: Install Node.js
       uses: actions/setup-node@v3
@@ -33,7 +40,31 @@ jobs:
     - name: Build NPM Assets
       run: npm run build
 
-    - name: Synchronize Laravel Files To Server
+    - name: Create Deployment Archive
+      run: |
+        tar --exclude='.git' \
+            --exclude='node_modules' \
+            --exclude='tests' \
+            --exclude='.env.example' \
+            --exclude='README.md' \
+            --exclude='.gitignore' \
+            -czf deployment.tar.gz .
+
+    - name: Upload and Extract Files
+      uses: appleboy/ssh-action@v0.1.6
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        port: ${{ secrets.VPS_PORT }}
+        script: |
+          # Create backup
+          cd /home/u868895797/domains/supracarer.com
+          if [ -d "api" ]; then
+            cp -r api api_backup_$(date +%Y%m%d_%H%M%S)
+          fi
+
+    - name: Deploy Laravel Files
       uses: easingthemes/ssh-deploy@v2.1.5
       env:
         SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
@@ -42,8 +73,9 @@ jobs:
         REMOTE_USER: ${{ secrets.VPS_USER }}
         REMOTE_PORT: ${{ secrets.VPS_PORT }}
         TARGET: "/home/u868895797/domains/supracarer.com/api"
+        EXCLUDE: "/node_modules/, /.git/, /tests/, /.env.example"
 
-    - name: Synchronize Public Folder To public_html/zipperapi
+    - name: Deploy Public Folder
       uses: easingthemes/ssh-deploy@v2.1.5
       env:
         SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
@@ -52,8 +84,8 @@ jobs:
         REMOTE_USER: ${{ secrets.VPS_USER }}
         REMOTE_PORT: ${{ secrets.VPS_PORT }}
         TARGET: "/home/u868895797/domains/supracarer.com/public_html/zipperapi"
-       
-    - name: Run Remote/Artisan Commands
+
+    - name: Post-Deployment Setup
       uses: appleboy/ssh-action@v0.1.6
       with:
         host: ${{ secrets.VPS_HOST }}
@@ -62,7 +94,46 @@ jobs:
         port: ${{ secrets.VPS_PORT }}
         script: |
           cd /home/u868895797/domains/supracarer.com/api
+
+          # Backup current .env if it exists
+          if [ -f .env ]; then
+            cp .env .env.backup.$(date +%Y%m%d_%H%M%S)
+          fi
+
+          # Set proper permissions
+          find . -type f -exec chmod 644 {} \;
+          find . -type d -exec chmod 755 {} \;
+          chmod -R 775 storage
+          chmod -R 775 bootstrap/cache
+          chmod 600 .env
+
+          # Clear all caches first
+          php artisan config:clear
+          php artisan route:clear
+          php artisan cache:clear
+          php artisan view:clear
+          php artisan event:clear
+
+          # Check if .env exists and is properly configured
+          if [ ! -f .env ]; then
+            echo "ERROR: .env file not found!"
+            exit 1
+          fi
+
+          # Run migrations
           php artisan migrate --force
+
+          # Rebuild caches for production
+          php artisan config:cache
+          php artisan route:cache
+          php artisan view:cache
+          php artisan event:cache
+
+          # Optimize for production
           php artisan optimize
 
+          # Update storage link if needed
+          php artisan storage:link
+
+          echo "Deployment completed successfully!"
 
