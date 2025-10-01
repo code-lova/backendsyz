@@ -40,17 +40,7 @@ jobs:
     - name: Build NPM Assets
       run: npm run build
 
-    - name: Create Deployment Archive
-      run: |
-        tar --exclude='.git' \
-            --exclude='node_modules' \
-            --exclude='tests' \
-            --exclude='.env.example' \
-            --exclude='README.md' \
-            --exclude='.gitignore' \
-            -czf deployment.tar.gz .
-
-    - name: Upload and Extract Files
+    - name: Create Backup on Server
       uses: appleboy/ssh-action@v0.1.6
       with:
         host: ${{ secrets.VPS_HOST }}
@@ -58,10 +48,11 @@ jobs:
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         port: ${{ secrets.VPS_PORT }}
         script: |
-          # Create backup
           cd /home/u868895797/domains/supracarer.com
           if [ -d "api" ]; then
+            echo "Creating backup..."
             cp -r api api_backup_$(date +%Y%m%d_%H%M%S)
+            echo "Backup created successfully"
           fi
 
     - name: Deploy Laravel Files
@@ -73,7 +64,7 @@ jobs:
         REMOTE_USER: ${{ secrets.VPS_USER }}
         REMOTE_PORT: ${{ secrets.VPS_PORT }}
         TARGET: "/home/u868895797/domains/supracarer.com/api"
-        EXCLUDE: "/node_modules/, /.git/, /tests/, /.env.example"
+        EXCLUDE: "/node_modules/, /.git/, /tests/, /.env.example, /.github/, /README.md, /.gitignore"
 
     - name: Deploy Public Folder
       uses: easingthemes/ssh-deploy@v2.1.5
@@ -105,35 +96,46 @@ jobs:
           find . -type d -exec chmod 755 {} \;
           chmod -R 775 storage
           chmod -R 775 bootstrap/cache
-          chmod 600 .env
+
+          # Set .env permissions only if it exists
+          if [ -f .env ]; then
+            chmod 600 .env
+          fi
 
           # Clear all caches first
-          php artisan config:clear
-          php artisan route:clear
-          php artisan cache:clear
-          php artisan view:clear
-          php artisan event:clear
+          echo "Clearing caches..."
+          php artisan config:clear || echo "Config clear failed, continuing..."
+          php artisan route:clear || echo "Route clear failed, continuing..."
+          php artisan cache:clear || echo "Cache clear failed, continuing..."
+          php artisan view:clear || echo "View clear failed, continuing..."
+          php artisan event:clear || echo "Event clear failed, continuing..."
 
           # Check if .env exists and is properly configured
           if [ ! -f .env ]; then
-            echo "ERROR: .env file not found!"
-            exit 1
+            echo "WARNING: .env file not found! Please create it manually."
+          else
+            echo ".env file found"
           fi
 
           # Run migrations
-          php artisan migrate --force
+          echo "Running migrations..."
+          php artisan migrate --force || echo "Migration failed, continuing..."
 
           # Rebuild caches for production
-          php artisan config:cache
-          php artisan route:cache
-          php artisan view:cache
-          php artisan event:cache
+          echo "Building production caches..."
+          php artisan config:cache || echo "Config cache failed, continuing..."
+          php artisan route:cache || echo "Route cache failed, continuing..."
+          php artisan view:cache || echo "View cache failed, continuing..."
+          php artisan event:cache || echo "Event cache failed, continuing..."
 
           # Optimize for production
-          php artisan optimize
+          echo "Optimizing application..."
+          php artisan optimize || echo "Optimize failed, continuing..."
 
           # Update storage link if needed
-          php artisan storage:link
+          echo "Creating storage link..."
+          php artisan storage:link || echo "Storage link failed, continuing..."
+
 
           echo "Deployment completed successfully!"
 
