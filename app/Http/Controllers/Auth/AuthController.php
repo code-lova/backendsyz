@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Mail\TwoFactorCodeMail;
 use App\Mail\VerifyEmailCodeMail;
+use App\Mail\WelcomeEmail;
 use App\Models\User;
+use App\Services\NotificationService;
 use Exception;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\Request;
@@ -21,6 +23,12 @@ use Jenssegers\Agent\Facades\Agent;
 
 class AuthController extends Controller
 {
+    protected NotificationService $notificationService;
+
+    public function __construct(NotificationService $notificationService)
+    {
+        $this->notificationService = $notificationService;
+    }
 
 
       // Register API
@@ -68,6 +76,13 @@ class AuthController extends Controller
                 Mail::to($user->email)->send(new VerifyEmailCodeMail($user));
             }
 
+            // Notify admins about new user registration
+            $this->notificationService->notifyAdminNewUserRegistration(
+                $user->name,
+                $user->role,
+                $user->email
+            );
+
             DB::commit();
 
             return response()->json([
@@ -108,7 +123,13 @@ class AuthController extends Controller
                 ], 422);
             }
 
-            $user = User::where('email', $request->email)->first();
+            // Optimize: Select only needed fields and check active status in single query
+            $user = User::select([
+                'id', 'uuid', 'name', 'email', 'password', 'role', 'is_active',
+                'two_factor_enabled', 'two_factor_code', 'two_factor_expires_at'
+            ])
+            ->where('email', $request->email)
+            ->first();
 
             if (!$user || !Hash::check($request->password, $user->password)) {
                 return response()->json([
@@ -172,7 +193,7 @@ class AuthController extends Controller
 
             // Get device/browser information
             $deviceInfo = $this->getDeviceInfo($request);
-            
+
             $session = $user->sessions()->create([
                 'ip_address' => $request->ip(),
                 'device' => $deviceInfo['device'],
@@ -230,7 +251,13 @@ class AuthController extends Controller
                 'code'  => ['required', 'digits:6'],
             ]);
 
-            $user = User::where('email', $request->email)->first();
+            // Optimize: Select only needed fields for 2FA verification
+            $user = User::select([
+                'id', 'uuid', 'name', 'email', 'role', 'is_active',
+                'two_factor_enabled', 'two_factor_code', 'two_factor_expires_at'
+            ])
+            ->where('email', $request->email)
+            ->first();
 
             if (!$user || !$user->two_factor_enabled) {
                 return response()->json([
@@ -530,6 +557,41 @@ class AuthController extends Controller
             $user->email_verified_at = now();
             $user->email_verification_code = null;
             $user->save();
+
+            // Send welcome email after successful verification
+            try {
+                Mail::to($user->email)->send(new WelcomeEmail($user));
+                Log::info('Welcome email sent successfully after email verification', [
+                    'user_uuid' => $user->uuid,
+                    'user_email' => $user->email,
+                    'user_name' => $user->name
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Failed to send welcome email after email verification', [
+                    'user_uuid' => $user->uuid,
+                    'user_email' => $user->email,
+                    'user_name' => $user->name,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+                // Don't fail verification if welcome email fails
+            }
+
+            // Notify admins about successful email verification
+            try {
+                $this->notificationService->notifyAdminUserEmailVerified(
+                    $user->name,
+                    $user->role,
+                    $user->email
+                );
+            } catch (\Exception $e) {
+                Log::error('Failed to send admin notification for email verification', [
+                    'user_uuid' => $user->uuid,
+                    'user_email' => $user->email,
+                    'error' => $e->getMessage()
+                ]);
+                // Don't fail verification if notification fails
+            }
 
             return response()->json(['message' => 'Email verified successfully.'], 201);
 

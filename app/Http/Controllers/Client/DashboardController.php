@@ -22,13 +22,15 @@ class DashboardController extends Controller
             $month = request('month') ? intval(request('month')) : now()->month;
             $year = request('year') ? intval(request('year')) : now()->year;
 
-            // Fetch all bookings for this user in the selected month/year
-            // Assumes booking_appts table has user_uuid and created_at fields
+            // Optimize: Use date range instead of whereYear/whereMonth for better index usage
+            $startOfMonth = now()->create($year, $month, 1)->startOfMonth();
+            $endOfMonth = $startOfMonth->copy()->endOfMonth();
+
+            // Fetch bookings with optimized query using date range
             $bookings = DB::table('booking_appts')
                 ->where('user_uuid', $user->uuid)
-                ->whereYear('created_at', $year)
-                ->whereMonth('created_at', $month)
-                ->select('id', 'created_at')
+                ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
+                ->select('created_at')
                 ->get();
 
             // Initialize week counters (Week 1-5)
@@ -94,14 +96,12 @@ class DashboardController extends Controller
 
     public function getTotalAppointment(){
         try {
-            // Get the currently authenticated user
             $user = Auth::user();
-
-            // Count total bookings for this user
-            // Assumes booking_appts table has user_uuid field
+            
+            // Optimize: Use query with index-friendly where clause
             $totalAppointments = DB::table('booking_appts')
                 ->where('user_uuid', $user->uuid)
-                ->count();
+                ->count('id');
 
             // Return the total count as JSON
             return response()->json([
@@ -110,13 +110,11 @@ class DashboardController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            // Log error for debugging
             Log::error('Getting total appointments failed', [
                 'user_id' => Auth::user()->id ?? 'unknown',
                 'error' => $e->getMessage(),
             ]);
 
-            // Return error response
             return response()->json([
                 'message' => app()->environment('production')
                     ? 'Something went wrong. Please try again later.'
@@ -131,11 +129,13 @@ class DashboardController extends Controller
             // Get the currently authenticated user
             $user = Auth::user();
 
-            // Fetch the next upcoming appointment for the user
-            // Assumes booking_appts table has user_uuid and booking_date fields
+            // Optimize: Use where clause instead of whereDate for better index usage
+            $today = now()->startOfDay();
+
             $nextAppointment = DB::table('booking_appts')
                 ->where('user_uuid', $user->uuid)
-                ->whereDate('start_date', '>=', now()->toDateString())
+                ->where('start_date', '>=', $today)
+                ->select('uuid', 'start_date', 'status', 'start_time', 'start_time_period')
                 ->orderBy('start_date', 'asc')
                 ->first();
 
@@ -187,14 +187,16 @@ class DashboardController extends Controller
             // Get the currently authenticated user
             $user = Auth::user();
 
-            // Fetch verified health workers using Eloquent, eager load reviews
-            $verifiedHealthWorkers = User::whereNotNull('email_verified_at')
-                ->where('email_verified_at', '!=', '')
-                ->where('role', 'healthworker')
-                ->with(['healthworkerReviews' => function($query) {
-                    $query->select('healthworker_uuid', 'rating');
-                }])
-                ->get();
+            // Optimize: Select only needed fields and use proper where clauses for indexes
+            $verifiedHealthWorkers = User::select([
+                'uuid', 'name', 'image', 'practitioner', 'gender'
+            ])
+            ->where('role', 'healthworker')
+            ->whereNotNull('email_verified_at')
+            ->with(['healthworkerReviews' => function($query) {
+                $query->select('healthworker_uuid', 'rating');
+            }])
+            ->get();
 
             // Format the response: only uuid, image, star rating, name, practitioner, gender, and review ratings
             $result = $verifiedHealthWorkers->map(function($hw) {

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Mail\NewSupportMessage;
 use App\Mail\SupportTicketConfirmationMail;
 use App\Models\SupportMessage;
+use App\Services\NotificationService;
 use App\Services\ReferenceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -16,6 +17,12 @@ use Illuminate\Support\Facades\Validator;
 
 class SupportController extends Controller
 {
+    protected NotificationService $notificationService;
+
+    public function __construct(NotificationService $notificationService)
+    {
+        $this->notificationService = $notificationService;
+    }
     public function createSupportMessage(Request $request, ReferenceService $referenceService){
         try{
 
@@ -35,12 +42,36 @@ class SupportController extends Controller
                 ], 422);
             }
 
+            // Check for pending messages
             $checkForPendingMessage = SupportMessage::where('user_uuid', $user->uuid)
                 ->where('status', 'Pending')
                 ->first();
             if($checkForPendingMessage){
                 return response()->json([
-                    'message' => 'You already have an open support ticket.'
+                    'message' => 'You have an open support ticket. Wait for a response first.'
+                ], 429);
+            }
+
+            // Check daily rate limit (3 support requests per day)
+            $todayStart = now()->startOfDay();
+            $todayEnd = now()->endOfDay();
+
+            $todayRequestsCount = SupportMessage::where('user_uuid', $user->uuid)
+                ->whereBetween('created_at', [$todayStart, $todayEnd])
+                ->count();
+
+            $dailyLimit = 3;
+            if ($todayRequestsCount >= $dailyLimit) {
+                $remainingTime = now()->endOfDay()->diffForHumans();
+
+                return response()->json([
+                    'message' => "You have reached your daily limit of {$dailyLimit} support requests.",
+                    'meta' => [
+                        'daily_limit' => $dailyLimit,
+                        'requests_today' => $todayRequestsCount,
+                        'reset_time' => $remainingTime,
+                        'next_reset' => now()->addDay()->startOfDay()->toISOString()
+                    ]
                 ], 429);
             }
 
@@ -67,8 +98,8 @@ class SupportController extends Controller
             // Send confirmation email to health worker
             try {
                 Mail::to($user->email)->send(new SupportTicketConfirmationMail($ticketData, $user));
-                
-               
+
+
             } catch (\Exception $e) {
                 Log::error('Failed to send support ticket confirmation email to health worker', [
                     'user_uuid' => $user->uuid,
@@ -82,7 +113,7 @@ class SupportController extends Controller
             // Send email to admin with support message content
             try {
                 $adminEmail = config('mail.admin_email') ?? env('ADMIN_EMAIL');
-                
+
                 if (!$adminEmail) {
                     Log::warning('Admin email not configured for support ticket notifications', [
                         'user_uuid' => $user->uuid,
@@ -96,15 +127,22 @@ class SupportController extends Controller
                         'support_message' => $supportMessage->message,
                         'reference' => $supportMessage->reference,
                     ];
-                    
+
                     Mail::to($adminEmail)->send(new NewSupportMessage($mailData));
-                    
+
                     Log::info('Support ticket email sent successfully to admin', [
                         'user_uuid' => $user->uuid,
                         'admin_email' => $adminEmail,
                         'support_reference' => $supportMessage->reference
                     ]);
                 }
+
+                // Notify admins about new health worker support message
+                $this->notificationService->notifyAdminNewHealthWorkerSupport(
+                    $supportMessage->reference,
+                    $user->name
+                );
+
             } catch (\Exception $e) {
                 Log::error('Failed to send support ticket email', [
                     'user_uuid' => $user->uuid,
@@ -125,6 +163,12 @@ class SupportController extends Controller
                     'reference' => $supportMessage->reference,
                     'status' => $supportMessage->status,
                     'created_at' => $supportMessage->created_at,
+                ],
+                'meta' => [
+                    'daily_limit' => $dailyLimit,
+                    'requests_today' => $todayRequestsCount + 1, // Include current request
+                    'remaining_requests' => $dailyLimit - ($todayRequestsCount + 1),
+                    'reset_time' => now()->endOfDay()->toISOString()
                 ]
             ], 201);
 
@@ -148,7 +192,50 @@ class SupportController extends Controller
         }
     }
 
+    /**
+     * Get current support request limits and usage for the authenticated user.
+     */
+    public function getSupportLimits(Request $request)
+    {
+        try {
+            $user = Auth::user();
 
+            // Check today's usage
+            $todayStart = now()->startOfDay();
+            $todayEnd = now()->endOfDay();
+
+            $todayRequestsCount = SupportMessage::where('user_uuid', $user->uuid)
+                ->whereBetween('created_at', [$todayStart, $todayEnd])
+                ->count();
+
+            $dailyLimit = 3;
+
+            // Check for pending ticket
+            $hasPendingTicket = SupportMessage::where('user_uuid', $user->uuid)
+                ->where('status', 'Pending')
+                ->exists();
+
+            return response()->json([
+                'daily_limit' => $dailyLimit,
+                'requests_today' => $todayRequestsCount,
+                'remaining_requests' => max(0, $dailyLimit - $todayRequestsCount),
+                'can_create_ticket' => $todayRequestsCount < $dailyLimit && !$hasPendingTicket,
+                'has_pending_ticket' => $hasPendingTicket,
+                'reset_time' => now()->endOfDay()->toISOString(),
+                'next_reset' => now()->addDay()->startOfDay()->toISOString(),
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to get support limits', [
+                'user_uuid' => Auth::user()?->uuid,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'message' => app()->environment('production') ? 'Something went wrong' : $e->getMessage()
+            ], 500);
+        }
+    }
 
     public function getSupportMessages(Request $request) {
         try{

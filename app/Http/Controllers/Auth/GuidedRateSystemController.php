@@ -14,26 +14,47 @@ class GuidedRateSystemController extends Controller
 {
     public function show(Request $request)
     {
-        $user = $request->user();
+        try {
+            $user = $request->user();
 
-        $grs = GuidedRateSystem::with('serviceTypes')->where('user_uuid', $user->uuid)->first();
+            $grs = GuidedRateSystem::with('serviceTypes')->where('user_uuid', $user->uuid)->first();
 
-        if (!$grs) {
-            return response()->json(['message' => 'No guided rate found'], 404);
+            if (!$grs) {
+                return response()->json([
+                    'message' => 'No guided rate found',
+                    'grs' => null
+                ], 200);
+            }
+
+            return response()->json([
+                'grs' => [
+                    'id' => $grs->uuid,
+                    'userId' => $grs->user_uuid,
+                    'rate_type' => $grs->rate_type,
+                    'nurse_type' => $grs->nurse_type,
+                    'guided_rate' => $grs->guided_rate,
+                    'care_duration' => $grs->care_duration,
+                    'service_types' => $grs->serviceTypes->pluck('service_type')->toArray(),
+                    'guided_rate_justification' => $grs->guided_rate_justification,
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to get guided rate system', [
+                'user_uuid' => optional(Auth::user())->uuid,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            $message = app()->environment('production')
+                ? 'Something went wrong while fetching guided rate'
+                : $e->getMessage();
+
+            return response()->json([
+                'message' => $message,
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        return response()->json([
-            'grs' => [
-                'id' => $grs->uuid,
-                'userId' => $grs->user_uuid,
-                'rate_type' => $grs->rate_type,
-                'nurse_type' => $grs->nurse_type,
-                'guided_rate' => $grs->guided_rate,
-                'care_duration' => $grs->care_duration,
-                'service_types' => $grs->serviceTypes->pluck('service_type')->toArray(),
-                'guided_rate_justification' => $grs->guided_rate_justification,
-            ]
-        ]);
     }
 
 

@@ -7,6 +7,7 @@ use App\Mail\BookingStatusNotification;
 use App\Models\BookingAppt;
 use App\Models\HealthworkerReview;
 use App\Models\User;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -16,6 +17,12 @@ use Illuminate\Support\Facades\Mail;
 
 class BookingRequests extends Controller
 {
+    protected NotificationService $notificationService;
+
+    public function __construct(NotificationService $notificationService)
+    {
+        $this->notificationService = $notificationService;
+    }
      /**
      * Allows admin to view all bookings
      * and the details of a specific booking request.
@@ -255,6 +262,8 @@ class BookingRequests extends Controller
                         'end_date' => $booking->end_date,
                         'start_time' => $booking->start_time,
                         'end_time' => $booking->end_time,
+                        'start_time_period' => $booking->start_time_period,
+                        'end_time_period' => $booking->end_time_period
                     ];
 
                     // Send email to client
@@ -296,6 +305,24 @@ class BookingRequests extends Controller
 
                         Mail::to($healthWorkerEmail)->send(new BookingStatusNotification($healthWorkerMailData));
                     }
+
+                    // Send notifications
+                    if ($healthWorker) {
+                        // Notify client about booking assignment
+                        $this->notificationService->notifyClientBookingAssigned(
+                            $booking->user_uuid,
+                            $booking->booking_reference,
+                            $healthWorker->name
+                        );
+
+                        // Notify health worker about new booking assignment
+                        $this->notificationService->notifyHealthWorkerNewBooking(
+                            $healthWorker->uuid,
+                            $booking->booking_reference,
+                            $booking->user->name
+                        );
+                    }
+
                 } catch (\Exception $e) {
                     Log::error('Failed to send booking processing notification', [
                         'booking_id' => $booking->id,

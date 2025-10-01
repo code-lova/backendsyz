@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Models\clientSupportMessages;
 use App\Models\User;
+use App\Services\NotificationService;
 use Illuminate\Support\Facades\Auth;
 use App\Models\clientSupportTicket;
 use Illuminate\Support\Facades\DB;
@@ -17,6 +18,12 @@ use App\Mail\NewSupportTicketNotification;
 
 class SupportTicketController extends Controller
 {
+    protected NotificationService $notificationService;
+
+    public function __construct(NotificationService $notificationService)
+    {
+        $this->notificationService = $notificationService;
+    }
     public function createTicketMessage(Request $request, ReferenceService $referenceService)
     {
         $user = Auth::user();
@@ -87,7 +94,7 @@ class SupportTicketController extends Controller
             // Send email notification to admin
             try {
                 $adminEmail = config('mail.admin_email') ?? env('ADMIN_EMAIL');
-                
+
                 if ($adminEmail) {
                     $emailData = [
                         'uuid' => $ticket->uuid,
@@ -99,15 +106,22 @@ class SupportTicketController extends Controller
                         'client_email' => $user->email ?? 'Unknown Email',
                         'created_at' => $ticket->created_at->format('F j, Y \a\t g:i A'),
                     ];
-                    
+
                     Mail::to($adminEmail)->send(new NewSupportTicketNotification($emailData));
-                    
+
                 } else {
                     Log::warning('Admin email not configured - support ticket notification not sent', [
                         'ticket_uuid' => $ticket->uuid,
                         'ticket_reference' => $ticket->reference
                     ]);
                 }
+
+                // Notify admins about new client support message
+                $this->notificationService->notifyAdminNewClientSupport(
+                    $ticket->reference,
+                    $user->name
+                );
+
             } catch (\Exception $e) {
                 // Log email error but don't fail the ticket creation
                 Log::error('Failed to send support ticket notification email', [
@@ -237,6 +251,22 @@ class SupportTicketController extends Controller
                 'sender_type' => $senderType,
                 'message' => $data['message'],
             ]);
+
+            // Notify admins about client reply to support ticket
+            try {
+                $this->notificationService->notifyAdminClientSupportReply(
+                    $ticket->reference,
+                    $user->name
+                );
+            } catch (\Exception $e) {
+                // Log notification error but don't fail the reply creation
+                Log::error('Failed to send admin notification for client support reply', [
+                    'ticket_uuid' => $ticket->uuid,
+                    'ticket_reference' => $ticket->reference,
+                    'user_uuid' => $user->uuid,
+                    'error' => $e->getMessage(),
+                ]);
+            }
 
             DB::commit();
 
