@@ -9,6 +9,7 @@ return [
     'allowed_origins' => [
         env('FRONTEND_URL', 'http://localhost:3000'),
         'https://www.supracarer.com',
+        'https://zipperapi.supracarer.com',
     ],
 
     'allowed_origins_patterns' => [],
