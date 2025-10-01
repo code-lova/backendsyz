@@ -26,6 +26,14 @@ Route::get('/', function () {
     ]);
 });
 
+Route::get('/health', function () {
+    return response()->json([
+        'status' => 'ok',
+        'message' => 'API is running',
+        'version' => '1.1.0'
+    ], 200);
+});
+
 
 Route::controller(\App\Http\Controllers\Auth\AuthController::class)->group(function(){
     Route::post('/register', 'register')->name('register')->middleware('throttle:register');
