@@ -7,6 +7,7 @@ use App\Models\clientSupportTicket;
 use App\Models\clientSupportMessages;
 use App\Models\User;
 use App\Mail\AdminReplyNotification;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -17,9 +18,15 @@ use Illuminate\Support\Str;
 
 class TicketSupport extends Controller
 {
+    protected NotificationService $notificationService;
+
+    public function __construct(NotificationService $notificationService)
+    {
+        $this->notificationService = $notificationService;
+    }
     /**
      * List all support tickets with client details and messages.
-     * 
+     *
      * Retrieves all support tickets created by clients along with their messages,
      * validates client existence, and provides comprehensive ticket information.
      *
@@ -108,21 +115,21 @@ class TicketSupport extends Controller
             $processedTickets = $tickets->getCollection()->map(function ($ticket) {
                 // Check if client is valid (exists and account is active)
                 $isValidClient = $ticket->user && $ticket->user->exists;
-                
+
                 // Add additional computed fields
                 $ticket->is_valid_client = $isValidClient;
                 $ticket->client_status = $isValidClient ? 'active' : 'invalid';
                 $ticket->total_messages = $ticket->messages->count();
                 $ticket->last_message_at = $ticket->messages->last()?->created_at;
                 $ticket->last_sender = $ticket->messages->last()?->sender;
-                
+
                 // Add message statistics
                 $adminMessages = $ticket->messages->where('sender.role', 'admin')->count();
                 $clientMessages = $ticket->messages->where('sender.role', 'client')->count();
-                
+
                 $ticket->admin_replies = $adminMessages;
                 $ticket->client_replies = $clientMessages;
-                
+
                 // Determine who needs to respond next
                 $lastMessage = $ticket->messages->last();
                 if ($lastMessage && $lastMessage->sender) {
@@ -188,8 +195,8 @@ class TicketSupport extends Controller
             ]);
 
             return response()->json([
-                'message' => app()->environment('production') 
-                    ? 'Something went wrong while retrieving support tickets.' 
+                'message' => app()->environment('production')
+                    ? 'Something went wrong while retrieving support tickets.'
                     : $e->getMessage(),
                 'error' => $e->getMessage()
             ], 500);
@@ -198,7 +205,7 @@ class TicketSupport extends Controller
 
     /**
      * Reply to a client support ticket as an admin.
-     * 
+     *
      * Allows admin to reply to an existing support ticket, validates ticket existence,
      * ensures it's open for replies, and creates a new message record.
      *
@@ -270,7 +277,7 @@ class TicketSupport extends Controller
             $existingAdminReplies = clientSupportMessages::where('ticket_uuid', $ticket->uuid)
                 ->where('sender_type', 'admin')
                 ->count();
-            
+
             $isFirstAdminReply = $existingAdminReplies === 0;
 
             // Create the reply message
@@ -310,6 +317,12 @@ class TicketSupport extends Controller
                     ]);
                 }
             }
+
+            // Notify client about support reply
+            $this->notificationService->notifyClientSupportReply(
+                $ticket->user_uuid,
+                $ticket->reference
+            );
 
             DB::commit();
 
@@ -360,7 +373,7 @@ class TicketSupport extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            
+
             Log::error('Admin ticket reply failed', [
                 'admin_id' => Auth::id(),
                 'ticket_uuid' => $ticketUuid,
@@ -369,8 +382,8 @@ class TicketSupport extends Controller
             ]);
 
             return response()->json([
-                'message' => app()->environment('production') 
-                    ? 'Something went wrong while sending the reply.' 
+                'message' => app()->environment('production')
+                    ? 'Something went wrong while sending the reply.'
                     : $e->getMessage(),
                 'error' => $e->getMessage()
             ], 500);
@@ -380,7 +393,7 @@ class TicketSupport extends Controller
 
     /**
      * Get a specific support ticket by ID with all details and messages.
-     * 
+     *
      * Retrieves a single support ticket with comprehensive information including
      * client details, all messages, conversation statistics, and validation status.
      *
@@ -424,7 +437,7 @@ class TicketSupport extends Controller
             // Validate client existence and status
             $isValidClient = $ticket->user && $ticket->user->exists;
             $clientStatus = $isValidClient ? 'active' : 'invalid';
-            
+
             // Check if client email is verified
             $clientEmailVerified = $ticket->user && $ticket->user->email_verified_at ? true : false;
 
@@ -432,10 +445,10 @@ class TicketSupport extends Controller
             $allMessages = $ticket->messages;
             $adminMessages = $allMessages->where('sender.role', 'admin');
             $clientMessages = $allMessages->where('sender.role', 'client');
-            
+
             $lastMessage = $allMessages->last();
             $firstMessage = $allMessages->first();
-            
+
             // Determine who needs to respond next
             $awaitingResponse = 'admin'; // Default
             if ($lastMessage) {
@@ -445,18 +458,18 @@ class TicketSupport extends Controller
             // Calculate response times (basic implementation)
             $averageResponseTime = null;
             $adminResponseTimes = [];
-            
+
             for ($i = 0; $i < count($allMessages) - 1; $i++) {
                 $currentMessage = $allMessages[$i];
                 $nextMessage = $allMessages[$i + 1];
-                
+
                 // If current is from client and next is from admin, calculate response time
                 if ($currentMessage->sender->role === 'client' && $nextMessage->sender->role === 'admin') {
                     $responseTime = $currentMessage->created_at->diffInMinutes($nextMessage->created_at);
                     $adminResponseTimes[] = $responseTime;
                 }
             }
-            
+
             if (!empty($adminResponseTimes)) {
                 $averageResponseTime = round(array_sum($adminResponseTimes) / count($adminResponseTimes), 2);
             }
@@ -470,7 +483,7 @@ class TicketSupport extends Controller
                 'status' => $ticket->status,
                 'created_at' => $ticket->created_at,
                 'updated_at' => $ticket->updated_at,
-                
+
                 // Client information
                 'client' => $ticket->user ? [
                     'uuid' => $ticket->user->uuid,
@@ -482,11 +495,11 @@ class TicketSupport extends Controller
                     'email_verified' => $clientEmailVerified,
                     'account_created_at' => $ticket->user->created_at,
                 ] : null,
-                
+
                 // Validation status
                 'is_valid_client' => $isValidClient,
                 'client_status' => $clientStatus,
-                
+
                 // Conversation statistics
                 'conversation_stats' => [
                     'total_messages' => $allMessages->count(),
@@ -501,10 +514,10 @@ class TicketSupport extends Controller
                     ] : null,
                     'first_message_at' => $firstMessage?->created_at,
                     'average_admin_response_time_minutes' => $averageResponseTime,
-                    'conversation_duration_hours' => $firstMessage && $lastMessage ? 
+                    'conversation_duration_hours' => $firstMessage && $lastMessage ?
                         $firstMessage->created_at->diffInHours($lastMessage->created_at) : 0,
                 ],
-                
+
                 // All messages with sender details
                 'messages' => $allMessages->map(function ($message) {
                     return [
@@ -523,7 +536,7 @@ class TicketSupport extends Controller
                         'is_from_client' => $message->sender?->role === 'client',
                     ];
                 })->values(), // Reset array keys
-                
+
                 // Actions available
                 'available_actions' => [
                     'can_reply' => $ticket->status === 'Open',
@@ -547,8 +560,8 @@ class TicketSupport extends Controller
             ]);
 
             return response()->json([
-                'message' => app()->environment('production') 
-                    ? 'Something went wrong while retrieving ticket details.' 
+                'message' => app()->environment('production')
+                    ? 'Something went wrong while retrieving ticket details.'
                     : $e->getMessage(),
                 'error' => $e->getMessage()
             ], 500);
@@ -558,7 +571,7 @@ class TicketSupport extends Controller
 
     /**
      * Update the status of a support ticket.
-     * 
+     *
      * Allows admin to update a support ticket status between "Open" and "Closed".
      * Validates ticket existence, admin permissions, and status transitions.
      *
@@ -660,7 +673,7 @@ class TicketSupport extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            
+
             Log::error('Ticket status update failed', [
                 'admin_id' => Auth::id(),
                 'ticket_id' => $id,
@@ -670,8 +683,8 @@ class TicketSupport extends Controller
             ]);
 
             return response()->json([
-                'message' => app()->environment('production') 
-                    ? 'Something went wrong while updating the ticket status.' 
+                'message' => app()->environment('production')
+                    ? 'Something went wrong while updating the ticket status.'
                     : $e->getMessage(),
                 'error' => $e->getMessage()
             ], 500);

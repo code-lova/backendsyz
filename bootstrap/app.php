@@ -31,6 +31,9 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withSchedule(function (Schedule $schedule) {
         $schedule->command('sanctum:prune-expired')->hourly();
+
+        // Clean up old notifications daily at 2:00 AM using auto cleanup
+        $schedule->command('notifications:cleanup --auto')->dailyAt('02:00');
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

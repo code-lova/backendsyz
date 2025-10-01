@@ -10,7 +10,7 @@
         body { font-family: Arial, sans-serif; background: #f8f9fa; }
         .container { max-width: 500px; margin: 0 auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px #eee; padding: 32px; }
         .header, .footer { text-align: center; background: #f1f1f1; padding: 16px 0; }
-        .code { font-size: 2em; font-weight: bold; color: #007bff; letter-spacing: 8px; margin: 24px 0; }
+        .code { font-size: 2em; font-weight: bold; color: #3ea117; letter-spacing: 8px; margin: 24px 0; }
         .content { text-align: center; }
     </style>
 </head>

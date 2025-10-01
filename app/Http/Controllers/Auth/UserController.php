@@ -21,13 +21,13 @@ class UserController extends Controller
 {
     /**
      * Permanently delete the authenticated user's account and all associated data.
-     * 
+     *
      * This operation:
      * 1. Creates a record in deleted_accounts table for audit purposes
      * 2. Logs out the user from all devices
      * 3. Deletes all user data from related tables
      * 4. Permanently removes the user account
-     * 
+     *
      * @param Request $request - Must contain 'confirmation' => 'DELETE_MY_ACCOUNT'
      *                          - Optional 'reasons_for_deletion' => string (max 1000 chars)
      * @return \Illuminate\Http\JsonResponse
@@ -48,7 +48,7 @@ class UserController extends Controller
             /** @var \App\Models\User $user */
             $user = Auth::user();
             $userUuid = $user->uuid;
-            
+
             Log::info('User account deletion initiated', [
                 'user_id' => $user->id,
                 'user_uuid' => $userUuid,
@@ -64,22 +64,33 @@ class UserController extends Controller
                 'email' => $user->email,
                 'reasons_for_deletion' => $request->input('reasons_for_deletion'),
             ]);
-            
+
             Log::info('Deleted account record created', [
                 'deleted_account_id' => $deletedAccountRecord->id,
                 'user_uuid' => $userUuid,
             ]);
 
             // Step 3: Logout from all devices first (revoke all tokens and expire sessions)
-            $authController = new AuthController();
-            $logoutResponse = $authController->logoutAllDevicesHandler($request);
-            
-            if ($logoutResponse->getStatusCode() !== 200) {
-                throw new Exception('Failed to logout from all devices');
-            }
+            // Instead of instantiating AuthController directly, we'll revoke tokens manually
+            // since AuthController now has dependencies that would require injection
+
+            // Revoke all personal access tokens for this user
+            $user->tokens()->delete();
+
+            // Mark all user sessions as expired
+            UserSession::where('user_uuid', $userUuid)->update([
+                'expired_at' => now(),
+                'is_active' => false
+            ]);
+
+            Log::info('User logged out from all devices', [
+                'user_uuid' => $userUuid,
+                'tokens_revoked' => 'all',
+                'sessions_expired' => 'all'
+            ]);
 
             // Step 4: Delete from all related tables containing user_uuid
-            
+
             // Delete user sessions (should already be handled by logout, but ensuring cleanup)
             $userSessionsDeleted = UserSession::where('user_uuid', $userUuid)->delete();
             Log::info('User sessions deleted', ['count' => $userSessionsDeleted]);
@@ -140,7 +151,7 @@ class UserController extends Controller
 
             // Step 5: Delete the user record itself
             $userDeleted = $user->delete();
-            
+
             if (!$userDeleted) {
                 throw new Exception('Failed to delete user record');
             }
@@ -174,7 +185,7 @@ class UserController extends Controller
 
         } catch (Exception $e) {
             DB::rollBack();
-            
+
             Log::error('User account deletion failed', [
                 'user_id' => Auth::user()->id ?? 'unknown',
                 'error' => $e->getMessage(),

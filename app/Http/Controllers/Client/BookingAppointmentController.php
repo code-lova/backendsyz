@@ -8,6 +8,7 @@ use App\Mail\NewBookingRequest;
 use App\Models\BookingAppt;
 use App\Models\BookingApptOthers;
 use App\Models\HealthworkerReview;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Mail;
@@ -18,6 +19,12 @@ use Illuminate\Support\Facades\Validator;
 
 class BookingAppointmentController extends Controller
 {
+    protected NotificationService $notificationService;
+
+    public function __construct(NotificationService $notificationService)
+    {
+        $this->notificationService = $notificationService;
+    }
 
 /**
  * Handle the creation of a booking appointment.
@@ -115,23 +122,45 @@ class BookingAppointmentController extends Controller
                 $clientEmail = $user->email;
                 $adminEmail = config('mail.admin_email') ?? env('ADMIN_EMAIL');
 
-                // Prepare mailable instance
-                $mailData = [
+                // Prepare comprehensive booking data
+                $baseMailData = [
                     'booking_reference' => $bookingReference,
                     'client_name' => $user->name,
                     'client_email' => $user->email,
                     'start_date' => $bookingApt->start_date,
                     'end_date' => $bookingApt->end_date,
-                    // Add more booking details as needed
+                    'start_time' => $bookingApt->start_time,
+                    'end_time' => $bookingApt->end_time,
+                    'start_time_period' => $bookingApt->start_time_period,
+                    'end_time_period' => $bookingApt->end_time_period,
+                    'care_type' => $bookingApt->care_type,
+                    'care_duration' => $bookingApt->care_duration,
+                    'care_duration_value' => $bookingApt->care_duration_value,
+                    'requesting_for' => $bookingApt->requesting_for,
+                    'accommodation' => $bookingApt->accommodation,
+                    'meal' => $bookingApt->meal,
+                    'num_of_meals' => $bookingApt->num_of_meals,
+                    'special_notes' => $bookingApt->special_notes,
                 ];
 
-                // Send to client
-                Mail::to($clientEmail)->send(new NewBookingRequest($mailData));
+                // Client email (recipient_type not set, so it defaults to client view)
+                $clientMailData = $baseMailData;
+                Mail::to($clientEmail)->send(new NewBookingRequest($clientMailData));
 
-                // Send to admin if email is set
+                // Admin email with admin-specific data
                 if ($adminEmail) {
-                    Mail::to($adminEmail)->send(new NewBookingRequest($mailData));
+                    $adminMailData = array_merge($baseMailData, [
+                        'recipient_type' => 'admin'
+                    ]);
+                    Mail::to($adminEmail)->send(new NewBookingRequest($adminMailData));
                 }
+
+                // Notify admins about new booking request
+                $this->notificationService->notifyAdminNewBookingRequest(
+                    $bookingReference,
+                    $user->name
+                );
+
             } catch (\Exception $e) {
                 Log::error('Failed to send booking emails', [
                     'user_id' => $user->id,

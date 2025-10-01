@@ -7,6 +7,7 @@ use App\Mail\BookingConfirmationMail;
 use App\Mail\BookingStatusUpdateMail;
 use App\Models\BookingAppt;
 use App\Models\User;
+use App\Services\NotificationService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -18,6 +19,12 @@ use Illuminate\Validation\ValidationException;
 
 class BookingRequestController extends Controller
 {
+    protected NotificationService $notificationService;
+
+    public function __construct(NotificationService $notificationService)
+    {
+        $this->notificationService = $notificationService;
+    }
     //fetch the processing appointment booking request assigned to the auth healthworker
     //by admin
 
@@ -287,6 +294,22 @@ class BookingRequestController extends Controller
                     'admin_email' => $adminEmail ?? 'not found',
                     'appointment_uuid' => $appointment->uuid,
                     'error' => $e->getMessage()
+                ]);
+            }
+
+            // Notify admins about booking confirmation
+            try {
+                $this->notificationService->notifyAdminBookingConfirmed(
+                    $appointment->booking_reference,
+                    $healthWorker->name,
+                    $appointment->user->name
+                );
+            } catch (\Exception $e) {
+                Log::error('Failed to send admin notification for booking confirmation', [
+                    'appointment_uuid' => $appointment->uuid,
+                    'booking_reference' => $appointment->booking_reference,
+                    'health_worker_uuid' => $healthWorker->uuid,
+                    'error' => $e->getMessage(),
                 ]);
             }
 
@@ -573,6 +596,22 @@ class BookingRequestController extends Controller
                     'admin_email' => $adminEmail ?? 'not found',
                     'appointment_uuid' => $appointment->uuid,
                     'error' => $e->getMessage()
+                ]);
+            }
+
+            // Notify admins about booking started
+            try {
+                $this->notificationService->notifyAdminBookingStarted(
+                    $appointment->booking_reference,
+                    $healthWorker->name,
+                    $appointment->user->name
+                );
+            } catch (\Exception $e) {
+                Log::error('Failed to send admin notification for booking started', [
+                    'appointment_uuid' => $appointment->uuid,
+                    'booking_reference' => $appointment->booking_reference,
+                    'health_worker_uuid' => $healthWorker->uuid,
+                    'error' => $e->getMessage(),
                 ]);
             }
 

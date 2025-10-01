@@ -9,6 +9,7 @@ use App\Models\HealthworkerReview;
 use App\Models\SupportMessage;
 use App\Models\SupportMessageReply;
 use App\Models\User;
+use App\Services\NotificationService;
 use App\Services\ReferenceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -20,6 +21,12 @@ use Illuminate\Validation\Rule;
 
 class AdminController extends Controller
 {
+    protected NotificationService $notificationService;
+
+    public function __construct(NotificationService $notificationService)
+    {
+        $this->notificationService = $notificationService;
+    }
     public function getAdminDetails(Request $request){
 
         $user = $request->user();
@@ -592,6 +599,23 @@ class AdminController extends Controller
                     new AdminReplyHwSupportMsg($supportMessage, $reply, $supportMessage->user)
                 );
 
+                // Notify health worker about support reply
+                $referenceForNotification = $supportMessage->reference ?? $reply->reference ?? 'Unknown';
+                
+                if ($referenceForNotification && $referenceForNotification !== 'Unknown') {
+                    $this->notificationService->notifyHealthWorkerSupportReply(
+                        $supportMessage->user_uuid,
+                        $referenceForNotification
+                    );
+                } else {
+                    Log::warning('Could not send notification - no valid reference found', [
+                        'support_message_uuid' => $supportMessage->uuid,
+                        'reply_uuid' => $reply->uuid,
+                        'support_reference' => $supportMessage->reference,
+                        'reply_reference' => $reply->reference
+                    ]);
+                }
+
             } catch (\Exception $emailException) {
                 // Log email failure but don't fail the entire operation
                 Log::error('Failed to send admin reply email notification', [
@@ -642,7 +666,7 @@ class AdminController extends Controller
         }
     }
 
-   
+
 
 
 }

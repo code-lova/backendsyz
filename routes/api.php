@@ -52,6 +52,15 @@ Route::middleware(['auth:sanctum'])->group(function (){
         Route::put('/update-password', 'updatePassword');
     });
 
+    // Notification routes (accessible by all authenticated users)
+    Route::controller(\App\Http\Controllers\NotificationController::class)->group(function (){
+        Route::get('/notifications', 'getNotifications'); // Get paginated notifications
+        Route::get('/notifications/latest', 'getLatestNotifications'); // Get latest notifications for bell icon
+        Route::get('/notifications/unread-count', 'getUnreadCount'); // Get unread count
+        Route::put('/notifications/mark-as-read', 'markAsRead'); // Mark specific notification as read
+        Route::put('/notifications/mark-all-as-read', 'markAllAsRead'); // Mark all notifications as read
+    });
+
     Route::controller(\App\Http\Controllers\Healthworker\UnavailableDateController::class)->group(function(){
         Route::post('/unavailable-dates/toggle', 'toggle');
         Route::get('/unavailable-dates', 'getUnavailableDates');
@@ -190,8 +199,9 @@ Route::middleware(['auth:sanctum', 'role:healthworker', 'ability:server:healthwo
     });
 
     Route::controller(\App\Http\Controllers\Healthworker\SupportController::class)->group(function () {
-        Route::post('/support', 'createSupportMessage');
+        Route::post('/support', 'createSupportMessage')->middleware('throttle:support');
         Route::get('/support', 'getSupportMessages');
+        Route::get('/support/limits', 'getSupportLimits');
     });
 
     Route::controller(\App\Http\Controllers\Healthworker\BookingRequestController::class)->group(function (){
@@ -199,7 +209,5 @@ Route::middleware(['auth:sanctum', 'role:healthworker', 'ability:server:healthwo
         Route::put('/confirm-booking-request/{uuid}/accept', 'acceptBookingRequest');
         Route::get('/healthworker/appointments', 'getHealthworkerAppointments');
         Route::put('/update-booking-request/{uuid}/ongoing', 'updateToOngoingBookingRequest');
-
-
     });
 });

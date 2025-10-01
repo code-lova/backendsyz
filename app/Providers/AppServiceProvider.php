@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Services\PerformanceMonitoringService;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -23,8 +24,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Enable performance monitoring in development
+        if (config('app.debug')) {
+            PerformanceMonitoringService::enableQueryLogging();
+        }
+
         RateLimiter::for('resend-request', function (Request $request) {
-            return Limit::perMinutes(10, 2)->by($request->ip()); // Limit to 1 requests per 20 minutes
+            return Limit::perMinutes(10, 2)->by($request->ip()); // Limit to 2 requests per 20 minutes
         });
 
         RateLimiter::for('register', function (Request $request) {
@@ -32,7 +38,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         RateLimiter::for('login', function (Request $request) {
-            return Limit::perMinute(10)->by($request->ip());  //10 requests/minute
+            return Limit::perMinute(8)->by($request->ip());  //8 requests/minute
         });
 
         RateLimiter::for('forgot-password', function (Request $request) {
@@ -45,6 +51,15 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('resend-2fa', function (Request $request) {
             return Limit::perMinute(3)->by($request->ip());  //3 requests/minute
+        });
+
+        RateLimiter::for('support', function (Request $request) {
+            return [
+                // Allow 5 requests per minute per user (to prevent spam/abuse)
+                Limit::perMinute(5)->by($request->user()?->uuid ?: $request->ip()),
+                // Allow 10 requests per hour per user (additional protection)
+                Limit::perHour(10)->by($request->user()?->uuid ?: $request->ip()),
+            ];
         });
 
         ResetPassword::createUrlUsing(function ($notifiable, $token) {
