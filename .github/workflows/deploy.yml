@@ -20,14 +20,8 @@ jobs:
         php-version: 8.3
         extensions: mbstring, xml, ctype, iconv, intl, pdo_sqlite, dom, filter, gd, iconv, json, mbstring, pdo
 
-    - name: Copy Environment File
-      run: php -r "file_exists('.env') || copy('.env.example', '.env');"
-
     - name: Install Composer Dependencies
       run: composer install --optimize-autoloader --no-dev --no-progress --no-interaction --prefer-dist
-
-    - name: Generate Application Key
-      run: php artisan key:generate
 
     - name: Install Node.js
       uses: actions/setup-node@v3
@@ -49,9 +43,9 @@ jobs:
         port: ${{ secrets.VPS_PORT }}
         script: |
           cd /home/u868895797/domains/supracarer.com
-          if [ -d "zipperapi_laravel" ]; then
+          if [ -d "api" ]; then
             echo "Creating backup..."
-            cp -r zipperapi_laravel zipperapi_laravel_backup_$(date +%Y%m%d_%H%M%S)
+            cp -r api api_backup_$(date +%Y%m%d_%H%M%S)
             echo "Backup created successfully"
           fi
 
@@ -63,10 +57,10 @@ jobs:
         REMOTE_HOST: ${{ secrets.VPS_HOST }}
         REMOTE_USER: ${{ secrets.VPS_USER }}
         REMOTE_PORT: ${{ secrets.VPS_PORT }}
-        TARGET: "/home/u868895797/domains/supracarer.com/zipperapi_laravel"
-        EXCLUDE: "/node_modules/, /.git/, /tests/, /.env.example, /.github/, /README.md, /.gitignore, /public/"
+        TARGET: "/home/u868895797/domains/supracarer.com/api"
+        EXCLUDE: "/node_modules/, /.git/, /tests/, /.env, /.env.example, /.github/, /README.md, /.gitignore, /public/"
 
-    - name: Deploy Public Folder to zipperapi subdomain
+    - name: Deploy Public Folder
       uses: easingthemes/ssh-deploy@v2.1.5
       env:
         SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
@@ -84,12 +78,9 @@ jobs:
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         port: ${{ secrets.VPS_PORT }}
         script: |
-          cd /home/u868895797/domains/supracarer.com/zipperapi_laravel
-
-          # Update the public/index.php to point to correct paths
+          # Update the public index.php to point to correct paths
           cd /home/u868895797/domains/supracarer.com/public_html/zipperapi
 
-          # Create the correct index.php
           cat > index.php << 'EOF'
           <?php
 
@@ -99,74 +90,53 @@ jobs:
           define('LARAVEL_START', microtime(true));
 
           // Determine if the application is in maintenance mode...
-          if (file_exists($maintenance = __DIR__.'/../../zipperapi_laravel/storage/framework/maintenance.php')) {
+          if (file_exists($maintenance = __DIR__.'/../../api/storage/framework/maintenance.php')) {
               require $maintenance;
           }
 
           // Register the Composer autoloader...
-          require __DIR__.'/../../zipperapi_laravel/vendor/autoload.php';
+          require __DIR__.'/../../api/vendor/autoload.php';
 
           // Bootstrap Laravel and handle the request...
-          $app = require_once __DIR__.'/../../zipperapi_laravel/bootstrap/app.php';
+          $app = require_once __DIR__.'/../../api/bootstrap/app.php';
 
           $app->handleRequest(Request::capture());
           EOF
 
-          # Set proper permissions
-          cd /home/u868895797/domains/supracarer.com/zipperapi_laravel
+          # Set proper file permissions
+          cd /home/u868895797/domains/supracarer.com/api
           find . -type f -exec chmod 644 {} \;
           find . -type d -exec chmod 755 {} \;
           chmod -R 775 storage
           chmod -R 775 bootstrap/cache
 
-          # Set permissions for public folder
+          # Set public folder permissions
           cd /home/u868895797/domains/supracarer.com/public_html/zipperapi
           chmod 644 index.php
-          chmod -R 755 .
 
-          # Back to Laravel app directory for artisan commands
-          cd /home/u868895797/domains/supracarer.com/zipperapi_laravel
+          # Back to Laravel app for artisan commands
+          cd /home/u868895797/domains/supracarer.com/api
 
-          # Backup current .env if it exists
-          if [ -f .env ]; then
-            cp .env .env.backup.$(date +%Y%m%d_%H%M%S)
-            echo ".env backed up"
-          fi
-
-          # Set .env permissions only if it exists
-          if [ -f .env ]; then
-            chmod 600 .env
-          fi
-
-          # Clear all caches first
+          # Clear all caches
           echo "Clearing caches..."
-          php artisan config:clear || echo "Config clear failed"
-          php artisan route:clear || echo "Route clear failed"
-          php artisan cache:clear || echo "Cache clear failed"
-          php artisan view:clear || echo "View clear failed"
+          php artisan config:clear
+          php artisan route:clear
+          php artisan cache:clear
+          php artisan view:clear
 
-          # Check if .env exists
-          if [ ! -f .env ]; then
-            echo "WARNING: .env file not found! Please create it manually."
-          else
-            echo ".env file found"
-          fi
-
-          # Run migrations
+          # Run database migrations
           echo "Running migrations..."
-          php artisan migrate --force || echo "Migration failed"
+          php artisan migrate --force
 
-          # Rebuild caches for production
+          # Rebuild optimized caches for production
           echo "Building production caches..."
-          php artisan config:cache || echo "Config cache failed"
-          php artisan route:cache || echo "Route cache failed"
+          php artisan config:cache
+          php artisan route:cache
 
-          # Optimize for production
-          echo "Optimizing application..."
-          php artisan optimize || echo "Optimize failed"
+          # Optimize application for production
+          php artisan optimize
 
-          # Create storage link
-          echo "Creating storage link..."
-          php artisan storage:link || echo "Storage link failed"
+          # Ensure storage link exists
+          php artisan storage:link
 
-          echo "Deployment completed successfully!"
+          echo "🚀 Deployment completed successfully!"
