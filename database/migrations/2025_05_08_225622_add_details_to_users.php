@@ -13,20 +13,17 @@ return new class extends Migration
     {
         Schema::table('users', function (Blueprint $table) {
             $table->string('phone')->after('email');
-            $table->enum('role', ['admin', 'nurse', 'client'])->default('client')->after('phone');
+            $table->enum('role', ['admin', 'healthworker', 'client'])->default('client')->after('phone');
+            $table->enum('practitioner', ['doctor', 'nurse', 'physician_assistant'])->nullable()->after('role');
             $table->string('gender')->after('password')->nullable();
             $table->string('date_of_birth')->after('gender')->nullable();
             $table->string('image')->after('date_of_birth')->nullable();
-            $table->string('place_of_birth')->after('image')->nullable();
-            $table->string('blood_group')->after('place_of_birth')->nullable();
-            $table->string('genotype')->after('blood_group')->nullable();
-            $table->string('address')->after('genotype')->nullable();
+            $table->string('address')->after('image')->nullable();
             $table->string('religion')->after('address')->nullable();
-            $table->string('nationality')->after('religion')->nullable();
-            $table->integer('weight')->after('nationality')->nullable();
-            $table->integer('height')->after('weight')->nullable();
-            $table->enum('is_active', ['0', '1'])->default(1)->after('height');
-
+            $table->enum('is_active', ['0', '1'])->default(1)->after('religion');
+            $table->timestamp('last_logged_in')->nullable()->after('email_verified_at');
+            $table->decimal('latitude', 10, 8)->after('is_active')->nullable();  // precise location
+            $table->decimal('longitude', 11, 8)->after('latitude')->nullable();
         });
     }
 

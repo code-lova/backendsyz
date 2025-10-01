@@ -15,23 +15,23 @@ class ClientResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id'       => $this->id,
+            'id' => $this->uuid,
             'fullname' => $this->name,
             'email'    => $this->email,
             'phone'    => $this->phone,
+            'about'    => $this->about,
             'gender'   => $this->gender,
             'date_of_birth' => $this->date_of_birth,
             'image' => $this->image,
-            'place_of_birth' => $this->place_of_birth,
-            'blood_group' => $this->blood_group,
-            'genotype' => $this->genotype,
             'address' => $this->address,
             'religion' => $this->religion,
-            'nationality' => $this->nationality,
-            'date_of_birth' => $this->date_of_birth,
-            'weight'   => $this->weight,
-            'height'   => $this->height,
-            'about' => $this->about,
+            'country' => $this->country,
+            'region' => $this->region,
+            'last_logged_in' => $this->last_logged_in,
+            'latitude' => $this->latitude,
+            'longitude' => $this->longitude,
+            'two_fa_enabled' => $this->two_factor_enabled,
+            'joined' => $this->created_at,
         ];
     }
 }

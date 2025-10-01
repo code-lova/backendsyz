@@ -15,6 +15,7 @@ return [
     */
 
     'default' => env('MAIL_MAILER', 'log'),
+    'admin_email' => env('ADMIN_EMAIL', 'jerryscholarsj@gmail.com'),
 
     /*
     |--------------------------------------------------------------------------
@@ -113,6 +114,21 @@ return [
     'from' => [
         'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
         'name' => env('MAIL_FROM_NAME', 'Example'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Support Email Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configuration for support-related emails to keep them separate
+    | from general notifications.
+    |
+    */
+
+    'support' => [
+        'address' => env('MAIL_SUPPORT_ADDRESS', 'support@supracarer.com'),
+        'name' => env('MAIL_SUPPORT_NAME', 'support@supracarer.com'),
     ],
 
 ];

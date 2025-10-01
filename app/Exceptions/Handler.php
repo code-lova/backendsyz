@@ -30,7 +30,9 @@ class Handler extends ExceptionHandler
 
             // All other exceptions (default 500)
             return response()->json([
-                'message' => 'Server error. Please try again later.',
+                'message' => app()->environment('production')
+                    ? 'Server error. Please try again later.'
+                    : $exception->getMessage(), // show full error in local/dev
             ], 500);
         }
 
