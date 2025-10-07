@@ -120,6 +120,6 @@ class User extends Authenticatable implements CanResetPassword
 
     public function healthworkerReviews()
     {
-        return $this->hasMany(HealthWorkerReview::class, 'healthworker_uuid', 'uuid');
+        return $this->hasMany(HealthworkerReview::class, 'healthworker_uuid', 'uuid');
     }
 }

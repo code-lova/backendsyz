@@ -203,6 +203,13 @@ class AuthController extends Controller
                 'last_used_at' => now(),
             ]);
 
+            Log::info('Login: Session created', [
+                'user_id' => $user->id,
+                'session_uuid' => $session->uuid,
+                'ip_address' => $request->ip(),
+                'device' => $deviceInfo['device'],
+            ]);
+
             $token = $user->createToken(
                 $tokenName,
                 $abilities,
@@ -212,8 +219,17 @@ class AuthController extends Controller
             // ✅ Link token with this session
             $plainTextToken = $token->plainTextToken; // send this to frontend
             $tokenModel = $token->accessToken; // returns token model
-            $tokenModel->update([
+
+            // Store the session UUID in the token record
+            $tokenModel->forceFill([
                 'user_session_uuid' => $session->uuid,
+            ])->save();
+
+            Log::info('Login: Token linked with session', [
+                'user_id' => $user->id,
+                'token_id' => $tokenModel->id,
+                'session_uuid' => $session->uuid,
+                'user_session_uuid_saved' => $tokenModel->user_session_uuid,
             ]);
 
 
@@ -339,6 +355,13 @@ class AuthController extends Controller
                 'last_used_at' => now(),
             ]);
 
+            Log::info('2FA: Session created', [
+                'user_id' => $user->id,
+                'session_uuid' => $session->uuid,
+                'ip_address' => $request->ip(),
+                'device' => $deviceInfo['device'],
+            ]);
+
             $token = $user->createToken(
                 $tokenName,
                 $abilities,
@@ -348,8 +371,17 @@ class AuthController extends Controller
             // ✅ Link token with this session
             $plainTextToken = $token->plainTextToken; // send this to frontend
             $tokenModel = $token->accessToken; // returns token model
-            $tokenModel->update([
+
+            // Store the session UUID in the token record
+            $tokenModel->forceFill([
                 'user_session_uuid' => $session->uuid,
+            ])->save();
+
+            Log::info('2FA: Token linked with session', [
+                'user_id' => $user->id,
+                'token_id' => $tokenModel->id,
+                'session_uuid' => $session->uuid,
+                'user_session_uuid_saved' => $tokenModel->user_session_uuid,
             ]);
 
             return response()->json([
@@ -649,35 +681,75 @@ class AuthController extends Controller
     // Logout for only current device
     public function logoutHandler(Request $request){
         try {
-
             $user = $request->user();
 
             // ✅ Update last_logged_in
             $user->update(['last_logged_in' => now()]);
 
             $token = $request->user()->currentAccessToken();
+            $sessionDeleted = false;
+            $sessionUuid = null;
 
             if ($token) {
                 // ✅ Find related session
                 $sessionUuid = $token->user_session_uuid;
 
+                Log::info('Logout: Token found', [
+                    'user_id' => $user->id,
+                    'token_id' => $token->id,
+                    'session_uuid' => $sessionUuid,
+                ]);
+
                 if ($sessionUuid) {
-                    $user->sessions()->where('status', 'active')->where('uuid', $sessionUuid)->update([
-                        'status' => 'expired',
-                        'last_used_at' => now(),
+                    // Check if session exists before deletion
+                    $sessionExists = $user->sessions()->where('uuid', $sessionUuid)->exists();
+
+                    Log::info('Logout: Session check', [
+                        'user_id' => $user->id,
+                        'session_uuid' => $sessionUuid,
+                        'session_exists' => $sessionExists,
+                    ]);
+
+                    if ($sessionExists) {
+                        // Directly delete the current session
+                        $deletedCount = $user->sessions()->where('uuid', $sessionUuid)->delete();
+                        $sessionDeleted = ($deletedCount > 0);
+
+                        Log::info('Logout: Session deletion result', [
+                            'user_id' => $user->id,
+                            'session_uuid' => $sessionUuid,
+                            'deleted_count' => $deletedCount,
+                            'session_deleted' => $sessionDeleted,
+                        ]);
+                    }
+                } else {
+                    Log::warning('Logout: No session UUID found in token', [
+                        'user_id' => $user->id,
+                        'token_id' => $token->id,
                     ]);
                 }
 
                 // ✅ Revoke token
                 $token->delete();
+
+                Log::info('Logout: Token deleted', [
+                    'user_id' => $user->id,
+                    'token_id' => $token->id,
+                ]);
+            } else {
+                Log::warning('Logout: No current access token found', [
+                    'user_id' => $user->id,
+                ]);
             }
 
-            // ✅ Delete all expired sessions for this user
-            $deletedSessionsCount = $user->sessions()->where('status', 'expired')->delete();
+            // ✅ Clean up any other expired sessions for this user
+            $expiredSessionsCount = $user->sessions()->where('status', 'expired')->delete();
 
-            Log::info('Expired sessions cleaned up during logout', [
+            Log::info('Logout: Complete session cleanup', [
                 'user_id' => $user->id,
-                'deleted_sessions_count' => $deletedSessionsCount,
+                'session_uuid' => $sessionUuid,
+                'current_session_deleted' => $sessionDeleted,
+                'expired_sessions_deleted' => $expiredSessionsCount,
             ]);
 
             return response()->json([
