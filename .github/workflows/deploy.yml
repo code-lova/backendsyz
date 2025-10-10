@@ -11,132 +11,141 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v3
+      - name: Checkout Code
+        uses: actions/checkout@v3
 
-    - name: Setup PHP
-      uses: shivammathur/setup-php@v2
-      with:
-        php-version: 8.3
-        extensions: mbstring, xml, ctype, iconv, intl, pdo_sqlite, dom, filter, gd, iconv, json, mbstring, pdo
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: 8.3
+          extensions: mbstring, xml, ctype, iconv, intl, pdo_sqlite, dom, filter, gd, iconv, json, mbstring, pdo
 
-    - name: Install Composer Dependencies
-      run: composer install --optimize-autoloader --no-dev --no-progress --no-interaction --prefer-dist
+      - name: Install Composer Dependencies
+        run: composer install --optimize-autoloader --no-dev --no-progress --no-interaction --prefer-dist
 
-    - name: Install Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '20'
+      - name: Install Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20"
 
-    - name: Install NPM Dependencies
-      run: npm install
+      - name: Install NPM Dependencies
+        run: npm install
 
-    - name: Build NPM Assets
-      run: npm run build
+      - name: Build NPM Assets
+        run: npm run build
 
-    - name: Create Backup on Server
-      uses: appleboy/ssh-action@v0.1.6
-      with:
-        host: ${{ secrets.VPS_HOST }}
-        username: ${{ secrets.VPS_USER }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        port: ${{ secrets.VPS_PORT }}
-        script: |
-          cd /home/u868895797/domains/supracarer.com
-          if [ -d "api" ]; then
-            echo "Creating backup..."
-            cp -r api api_backup_$(date +%Y%m%d_%H%M%S)
-            echo "Backup created successfully"
-          fi
+      - name: Create Backup on Server
+        uses: appleboy/ssh-action@v0.1.6
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          script: |
+            cd /home/u868895797/domains/supracarer.com
+            if [ -d "api" ]; then
+              # Remove previous backup if it exists
+              echo "Removing previous backup..."
+              rm -rf api_backup 2>/dev/null || true
 
-    - name: Deploy Laravel Application Files
-      uses: easingthemes/ssh-deploy@v2.1.5
-      env:
-        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-        SOURCE: "."
-        REMOTE_HOST: ${{ secrets.VPS_HOST }}
-        REMOTE_USER: ${{ secrets.VPS_USER }}
-        REMOTE_PORT: ${{ secrets.VPS_PORT }}
-        TARGET: "/home/u868895797/domains/supracarer.com/api"
-        EXCLUDE: "/node_modules/, /.git/, /tests/, /.env, /.env.example, /.github/, /README.md, /.gitignore, /public/"
+              # Create new backup
+              echo "Creating new backup..."
+              cp -r api api_backup
+              echo "Backup created successfully"
 
-    - name: Deploy Public Folder
-      uses: easingthemes/ssh-deploy@v2.1.5
-      env:
-        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-        SOURCE: "public/"
-        REMOTE_HOST: ${{ secrets.VPS_HOST }}
-        REMOTE_USER: ${{ secrets.VPS_USER }}
-        REMOTE_PORT: ${{ secrets.VPS_PORT }}
-        TARGET: "/home/u868895797/domains/supracarer.com/public_html/zipperapi"
+              # Show backup status
+              echo "Backup folder created: api_backup"
+              du -sh api_backup
+            fi
 
-    - name: Post-Deployment Setup
-      uses: appleboy/ssh-action@v0.1.6
-      with:
-        host: ${{ secrets.VPS_HOST }}
-        username: ${{ secrets.VPS_USER }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        port: ${{ secrets.VPS_PORT }}
-        script: |
-          # Update the public index.php to point to correct paths
-          cd /home/u868895797/domains/supracarer.com/public_html/zipperapi
+      - name: Deploy Laravel Application Files
+        uses: easingthemes/ssh-deploy@v2.1.5
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SOURCE: "."
+          REMOTE_HOST: ${{ secrets.VPS_HOST }}
+          REMOTE_USER: ${{ secrets.VPS_USER }}
+          REMOTE_PORT: ${{ secrets.VPS_PORT }}
+          TARGET: "/home/u868895797/domains/supracarer.com/api"
+          EXCLUDE: "/node_modules/, /.git/, /tests/, /.env, /.env.example, /.github/, /README.md, /.gitignore, /public/"
 
-          cat > index.php << 'EOF'
-          <?php
+      - name: Deploy Public Folder
+        uses: easingthemes/ssh-deploy@v2.1.5
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SOURCE: "public/"
+          REMOTE_HOST: ${{ secrets.VPS_HOST }}
+          REMOTE_USER: ${{ secrets.VPS_USER }}
+          REMOTE_PORT: ${{ secrets.VPS_PORT }}
+          TARGET: "/home/u868895797/domains/supracarer.com/public_html/zipperapi"
 
-          use Illuminate\Foundation\Application;
-          use Illuminate\Http\Request;
+      - name: Post-Deployment Setup
+        uses: appleboy/ssh-action@v0.1.6
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          script: |
+            # Update the public index.php to point to correct paths
+            cd /home/u868895797/domains/supracarer.com/public_html/zipperapi
 
-          define('LARAVEL_START', microtime(true));
+            cat > index.php << 'EOF'
+            <?php
 
-          // Determine if the application is in maintenance mode...
-          if (file_exists($maintenance = __DIR__.'/../../api/storage/framework/maintenance.php')) {
-              require $maintenance;
-          }
+            use Illuminate\Foundation\Application;
+            use Illuminate\Http\Request;
 
-          // Register the Composer autoloader...
-          require __DIR__.'/../../api/vendor/autoload.php';
+            define('LARAVEL_START', microtime(true));
 
-          // Bootstrap Laravel and handle the request...
-          $app = require_once __DIR__.'/../../api/bootstrap/app.php';
+            // Determine if the application is in maintenance mode...
+            if (file_exists($maintenance = __DIR__.'/../../api/storage/framework/maintenance.php')) {
+                require $maintenance;
+            }
 
-          $app->handleRequest(Request::capture());
-          EOF
+            // Register the Composer autoloader...
+            require __DIR__.'/../../api/vendor/autoload.php';
 
-          # Set proper file permissions
-          cd /home/u868895797/domains/supracarer.com/api
-          find . -type f -exec chmod 644 {} \;
-          find . -type d -exec chmod 755 {} \;
-          chmod -R 775 storage
-          chmod -R 775 bootstrap/cache
+            // Bootstrap Laravel and handle the request...
+            $app = require_once __DIR__.'/../../api/bootstrap/app.php';
 
-          # Set public folder permissions
-          cd /home/u868895797/domains/supracarer.com/public_html/zipperapi
-          chmod 644 index.php
+            $app->handleRequest(Request::capture());
+            EOF
 
-          # Back to Laravel app for artisan commands
-          cd /home/u868895797/domains/supracarer.com/api
+            # Set proper file permissions
+            cd /home/u868895797/domains/supracarer.com/api
+            find . -type f -exec chmod 644 {} \;
+            find . -type d -exec chmod 755 {} \;
+            chmod -R 775 storage
+            chmod -R 775 bootstrap/cache
 
-          # Clear all caches
-          echo "Clearing caches..."
-          php artisan config:clear
-          php artisan route:clear
-          php artisan cache:clear
-          php artisan view:clear
+            # Set public folder permissions
+            cd /home/u868895797/domains/supracarer.com/public_html/zipperapi
+            chmod 644 index.php
 
-          # Run database migrations
-          echo "Running migrations..."
-          php artisan migrate --force
+            # Back to Laravel app for artisan commands
+            cd /home/u868895797/domains/supracarer.com/api
 
-          # Rebuild optimized caches for production
-          echo "Building production caches..."
-          php artisan config:cache
-          php artisan route:cache
+            # Clear all caches
+            echo "Clearing caches..."
+            php artisan config:clear
+            php artisan route:clear
+            php artisan cache:clear
+            php artisan view:clear
 
-          # Optimize application for production
-          php artisan optimize
+            # Run database migrations
+            echo "Running migrations..."
+            php artisan migrate --force
 
-          # Ensure storage link exists
-          php artisan storage:link
+            # Rebuild optimized caches for production
+            echo "Building production caches..."
+            php artisan config:cache
+            php artisan route:cache
 
-          echo "🚀 Deployment completed successfully!"
+            # Optimize application for production
+            php artisan optimize
+
+            # Ensure storage link exists
+            php artisan storage:link
+
+            echo "🚀 Deployment completed successfully!"
