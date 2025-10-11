@@ -123,12 +123,12 @@
             <h1>🎧 Support Team Response</h1>
             <p style="margin: 8px 0 0 0; opacity: 0.9;">We've responded to your support ticket</p>
         </div>
-        
+
         <div class="content">
             <p>Hello <strong>{{ $client_name }}</strong>,</p>
-            
+
             <p>Good news! Our support team has responded to your ticket. Here are the details:</p>
-            
+
             <div class="ticket-info">
                 <h3>📋 Ticket Information</h3>
                 <p><strong>Reference:</strong> #{{ $ticket_reference }}</p>
@@ -136,22 +136,22 @@
                 <p><strong>Status:</strong> {{ $ticket_status }}</p>
                 <p><strong>Response Date:</strong> {{ $response_date }}</p>
             </div>
-            
+
             <div class="reply-content">
                 <h4>💬 Our Response:</h4>
                 <div class="reply-text">{{ $admin_reply }}</div>
-                
+
                 <div class="admin-signature">
                     <strong>{{ $admin_name }}</strong><br>
                     <em>Supracarer Support Team</em>
                 </div>
             </div>
-            
+
             @if($ticket_status === 'Open')
             <div class="note">
                 <strong>💡 Need to continue the conversation?</strong> You can reply to this ticket to ask follow-up questions or provide additional information.
             </div>
-            
+
             <div class="cta-section">
                 <a href="#" class="cta-button">View & Reply to Ticket</a>
             </div>
@@ -160,15 +160,15 @@
                 <strong>✅ Ticket Closed:</strong> This ticket has been marked as resolved. If you need further assistance, please create a new support ticket.
             </div>
             @endif
-            
+
             <p>If you have any questions or need further assistance, please don't hesitate to reach out to our support team.</p>
-            
+
             <p>Best regards,<br>
             <strong>The Supracarer Support Team</strong></p>
         </div>
-        
+
         <div class="footer">
-            <span class="brand">Supracarer</span> &mdash; Professional Care Services<br>
+            <span class="brand">Supracarer</span> &mdash; Above and beyond care<br>
             This is an automated notification. Please use our support system to reply to this ticket.<br>
             <small>You're receiving this email because you have an active support ticket with us.</small>
         </div>

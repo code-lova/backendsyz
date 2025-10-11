@@ -213,7 +213,7 @@
         <!-- Footer -->
         <div class="footer">
             <p><strong>SupraCarer Support Team</strong></p>
-            <p>Professional Healthcare Support Platform</p>
+            <p>Above and beyond care</p>
             <div class="contact-info">
                 <p>This email was sent regarding your support request {{ $supportMessage->reference }}</p>
                 <p>© {{ date('Y') }} SupraCarer. All rights reserved.</p>
