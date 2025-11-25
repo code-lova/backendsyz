@@ -35,7 +35,7 @@ class UpdateClientProfileRequest extends FormRequest
             ],
             'phone' => [
                 'required',
-                'regex:/^\+?[1-9]\d{9,14}$/',
+                'regex:/^\+?[0-9]{10,15}$/',
                 Rule::unique('users', 'phone')->ignore($userId),
             ],
             'date_of_birth' => ['required', 'date', 'before:today'],
@@ -53,8 +53,24 @@ class UpdateClientProfileRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'name.required' => 'Name is required.',
+            'name.max' => 'Name must not exceed 255 characters.',
+            'email.required' => 'Email is required.',
+            'email.email' => 'Please provide a valid email address.',
             'email.unique' => 'This email is already in use.',
+            'phone.required' => 'Phone number is required.',
+            'phone.regex' => 'Please provide a valid phone number (10-15 digits, optional + prefix).',
             'phone.unique' => 'This phone number is already registered.',
+            'date_of_birth.required' => 'Date of birth is required.',
+            'date_of_birth.date' => 'Please provide a valid date.',
+            'date_of_birth.before' => 'Date of birth must be before today.',
+            'country.required' => 'Country is required.',
+            'region.required' => 'Region is required.',
+            'address.required' => 'Address is required.',
+            'address.max' => 'Address must not exceed 500 characters.',
+            'gender.required' => 'Gender is required.',
+            'gender.in' => 'Please select a valid gender option.',
+            'about.required' => 'About section is required.',
             'about.max' => 'About section must not exceed 1000 characters.',
         ];
     }
