@@ -55,7 +55,7 @@ class BookingAppointmentController extends Controller
             'meal' => 'nullable|in:Yes,No',
             'num_of_meals' => 'nullable|integer',
 
-            'special_notes' => 'required|string|min:20|max:1000',
+            'special_notes' => 'nullable|min:10|max:1000',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
             'start_time' => 'required|string',
@@ -63,7 +63,7 @@ class BookingAppointmentController extends Controller
             'start_time_period' => 'required|string|in:AM,PM',
             'end_time_period' => 'required|string|in:AM,PM',
 
-            'medical_services' => 'required|array',
+            'medical_services' => 'nullable|array',
             'medical_services.*' => 'string|max:255',
             'other_extra_service' => 'nullable|array',
             'other_extra_service.*' => 'string|max:255',
