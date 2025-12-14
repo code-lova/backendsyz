@@ -56,7 +56,8 @@ class BookingRequestController extends Controller
             // Build query for pending appointments assigned to this health worker
             $query = BookingAppt::with([
                 'user:uuid,name,email,phone,image,country,region,religion,address',
-                'others:uuid,booking_appts_uuid,medical_services,other_extra_service'
+                'others:uuid,booking_appts_uuid,medical_services,other_extra_service',
+                'recurrence:uuid,booking_appts_uuid,is_recurring,recurrence_type,recurrence_days,recurrence_end_type,recurrence_end_date,recurrence_occurrences'
             ])
             ->where('health_worker_uuid', $healthWorker->uuid)
             ->where('status', 'Processing');
@@ -141,6 +142,14 @@ class BookingRequestController extends Controller
                     'other_extra_services' => $otherExtraServices,
                     'is_urgent' => $isUrgent,
                     'starts_in_hours' => $startDate->diffInHours(now()),
+                    'recurrence' => $appointment->recurrence ? [
+                        'is_recurring' => $appointment->recurrence->is_recurring,
+                        'recurrence_type' => $appointment->recurrence->recurrence_type,
+                        'recurrence_days' => $appointment->recurrence->recurrence_days,
+                        'recurrence_end_type' => $appointment->recurrence->recurrence_end_type,
+                        'recurrence_end_date' => $appointment->recurrence->recurrence_end_date,
+                        'recurrence_occurrences' => $appointment->recurrence->recurrence_occurrences,
+                    ] : null,
                     'client' => [
                         'uuid' => $appointment->user->uuid,
                         'name' => $appointment->user->name,
@@ -232,7 +241,7 @@ class BookingRequestController extends Controller
             }
 
             // Find the appointment
-            $appointment = BookingAppt::with(['user', 'others'])
+            $appointment = BookingAppt::with(['user', 'others', 'recurrence'])
                 ->where('uuid', $uuid)
                 ->where('health_worker_uuid', $healthWorker->uuid)
                 ->first();
@@ -398,7 +407,9 @@ class BookingRequestController extends Controller
             // Build the query for appointments assigned to this health worker
             $query = BookingAppt::with([
                 'user:uuid,name,email,phone,image,country,religion,region,address,date_of_birth',
-                'others:uuid,booking_appts_uuid,medical_services,other_extra_service'
+                'others:uuid,booking_appts_uuid,medical_services,other_extra_service',
+                'recurrence:uuid,booking_appts_uuid,is_recurring,recurrence_type,recurrence_days,recurrence_end_type,recurrence_end_date,recurrence_occurrences'
+
             ])
             ->where('health_worker_uuid', $healthWorker->uuid)
             ->whereIn('status', ['Confirmed', 'Ongoing', 'Done']);
@@ -537,7 +548,7 @@ class BookingRequestController extends Controller
             }
 
             // Find the appointment
-            $appointment = BookingAppt::with(['user', 'healthWorker'])
+            $appointment = BookingAppt::with(['user', 'healthWorker', 'recurrence'])
                 ->where('uuid', $uuid)
                 ->where('health_worker_uuid', $healthWorker->uuid)
                 ->first();

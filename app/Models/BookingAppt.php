@@ -6,6 +6,7 @@ use Faker\Provider\Base;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class BookingAppt extends BaseModel
 {
@@ -55,5 +56,10 @@ class BookingAppt extends BaseModel
     public function others(): HasMany
     {
         return $this->hasMany(BookingApptOthers::class, 'booking_appts_uuid', 'uuid');
+    }
+
+    public function recurrence(): HasOne
+    {
+        return $this->hasOne(BookingRecurrence::class, 'booking_appts_uuid', 'uuid');
     }
 }

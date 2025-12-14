@@ -15,7 +15,7 @@
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             line-height: 1.6;
@@ -24,14 +24,14 @@
             -webkit-text-size-adjust: 100%;
             -ms-text-size-adjust: 100%;
         }
-        
+
         /* Container styles */
         .email-wrapper {
             width: 100%;
             background-color: #f9fafb;
             padding: 20px 0;
         }
-        
+
         .email-container {
             max-width: 600px;
             margin: 0 auto;
@@ -41,7 +41,7 @@
             overflow: hidden;
             padding: 15px;
         }
-        
+
         /* Header styles */
         .email-header {
             background: {{ $categoryStyles['gradient'] }};
@@ -50,7 +50,7 @@
             color: #050612;
             border-radius: 12px 12px 0 0;
         }
-        
+
         .logo-container {
             margin-bottom: 20px;
         }
@@ -58,7 +58,7 @@
         .logo-img {
             height: 48px;
         }
-        
+
         .header-title {
             font-size: 20px;
             font-weight: 500;
@@ -69,38 +69,38 @@
             gap: 10px;
             color: #05092d;
         }
-        
+
         .category-icon {
             font-size: 19px;
         }
-        
+
         /* Content styles */
         .email-content {
             padding: 40px;
         }
-        
+
         .greeting {
             font-size: 18px;
             font-weight: 600;
             color: #1f2937;
             margin-bottom: 20px;
         }
-        
+
         .message-content {
             font-size: 16px;
             line-height: 1.7;
             color: #374151;
             margin-bottom: 30px;
         }
-        
+
         .message-content p {
             margin-bottom: 16px;
         }
-        
+
         .message-content p:last-child {
             margin-bottom: 0;
         }
-        
+
         /* Category-specific content styling */
         .category-badge {
             display: inline-block;
@@ -115,13 +115,13 @@
             margin-bottom: 20px;
             margin-top: 13px;
         }
-        
+
         /* Button styles */
         .cta-container {
             text-align: center;
             margin: 30px 0;
         }
-        
+
         .cta-button {
             display: inline-block;
             background: {{ $categoryStyles['gradient'] }};
@@ -133,60 +133,85 @@
             font-size: 16px;
             transition: transform 0.2s ease;
         }
-        
+
         .cta-button:hover {
             transform: translateY(-1px);
         }
-        
+
         /* Footer styles */
         .email-footer {
             background-color: #f8fafc;
             padding: 30px 40px;
             border-top: 1px solid #e5e7eb;
         }
-        
+
         .footer-content {
             text-align: center;
             color: #6b7280;
             font-size: 14px;
         }
-        
+
         .company-info {
             margin-bottom: 20px;
         }
-        
+
         .company-name {
             font-weight: 600;
             color: #374151;
             margin-bottom: 5px;
         }
-        
+
         .company-tagline {
             font-style: italic;
             margin-bottom: 15px;
         }
-        
+
         .contact-info {
             margin-bottom: 20px;
         }
-        
+
         .contact-info a {
             color: {{ $categoryStyles['primary_color'] }};
             text-decoration: none;
         }
-        
+
         .social-links {
             margin: 20px 0;
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 15px;
         }
-        
+
         .social-links a {
             display: inline-block;
-            margin: 0 10px;
-            color: #6b7280;
+            color: #ecf0f1;
             text-decoration: none;
-            font-size: 12px;
+            font-size: 13px;
+            padding: 8px 12px;
+            background-color: rgba(0, 0, 0, 0.1);
+            border-radius: 5px;
+            transition: background-color 0.3s;
         }
-        
+
+        .social-links a:hover {
+            background-color: rgba(0, 0, 0, 0.2);
+        }
+
+        @media only screen and (max-width: 480px) {
+            .social-links {
+                flex-direction: column;
+                align-items: center;
+                gap: 10px;
+            }
+            .social-links a {
+                width: 100%;
+                max-width: 280px;
+                text-align: center;
+                padding: 10px 15px;
+            }
+        }
+
         .unsubscribe-section {
             margin-top: 20px;
             padding-top: 20px;
@@ -194,18 +219,18 @@
             font-size: 12px;
             color: #9ca3af;
         }
-        
+
         .unsubscribe-section a {
             color: #6b7280;
             text-decoration: underline;
         }
-        
+
         /* Responsive design */
         @media only screen and (max-width: 600px) {
             .email-wrapper {
                 padding: 10px;
             }
-            
+
             .email-header,
             .email-content,
             .email-footer {
@@ -215,28 +240,28 @@
             .logo-img {
                 height: 38px;
             }
-            
+
             .header-title {
                 font-size: 15px;
             }
-            
+
             .message-content {
                 font-size: 15px;
             }
-            
+
             .cta-button {
                 padding: 12px 24px;
                 font-size: 15px;
             }
         }
-        
+
         @media only screen and (max-width: 480px) {
             .email-header,
             .email-content,
             .email-footer {
                 padding: 15px;
             }
-            
+
             .header-title {
                 font-size: 18px;
                 flex-direction: column;
@@ -246,7 +271,7 @@
             .logo-img {
                 height: 38px;
             }
-            
+
             .category-icon {
                 font-size: 24px;
             }
@@ -313,17 +338,16 @@
                     </div>
 
                     <div class="social-links">
-                        <a href="#">Facebook</a> |
-                        <a href="#">Twitter</a> |
-                        <a href="#">LinkedIn</a> |
-                        <a href="#">Instagram</a>
+                        <a href="mailto:support@supracarer.com">📧 support@supracarer.com</a>
+                        <a href="https://www.supracarer.com">🌐 www.supracarer.com</a>
+                        <a href="tel:+233549148087">📞 +(233) 549-148-087</a>
                     </div>
 
                     <div class="unsubscribe-section">
                         <p>
                             You received this email because you are a registered user of SupraCarer.<br>
-                            If you no longer wish to receive these emails, you can 
-                            <a href="#">unsubscribe here</a> or 
+                            If you no longer wish to receive these emails, you can
+                            <a href="#">unsubscribe here</a> or
                             <a href="#">update your email preferences</a>.
                         </p>
                         <p style="margin-top: 10px;">

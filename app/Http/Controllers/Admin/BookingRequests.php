@@ -54,7 +54,8 @@ class BookingRequests extends Controller
                 'healthWorker:uuid,name,email,phone,image,country,region',
                 'healthWorker.guidedRateSystem',
                 'healthWorker.guidedRateSystem.serviceTypes',
-                'others:uuid,booking_appts_uuid,medical_services,other_extra_service'
+                'others:uuid,booking_appts_uuid,medical_services,other_extra_service',
+                'recurrence:uuid,booking_appts_uuid,is_recurring,recurrence_type,recurrence_days,recurrence_end_type,recurrence_end_date,recurrence_occurrences'
             ]);
 
             // Search by booking_reference
@@ -182,7 +183,7 @@ class BookingRequests extends Controller
             $data = $validator->validated();
 
             // Find the booking to be processed
-            $booking = BookingAppt::where('uuid', $id)->first();
+            $booking = BookingAppt::with(['user', 'recurrence'])->where('uuid', $id)->first();
 
             if (!$booking) {
                 return response()->json([
@@ -263,7 +264,14 @@ class BookingRequests extends Controller
                         'start_time' => $booking->start_time,
                         'end_time' => $booking->end_time,
                         'start_time_period' => $booking->start_time_period,
-                        'end_time_period' => $booking->end_time_period
+                        'end_time_period' => $booking->end_time_period,
+                        // Recurrence data
+                        'is_recurring' => $booking->recurrence?->is_recurring ?? 'No',
+                        'recurrence_type' => $booking->recurrence?->recurrence_type,
+                        'recurrence_days' => $booking->recurrence?->recurrence_days,
+                        'recurrence_end_type' => $booking->recurrence?->recurrence_end_type,
+                        'recurrence_end_date' => $booking->recurrence?->recurrence_end_date,
+                        'recurrence_occurrences' => $booking->recurrence?->recurrence_occurrences,
                     ];
 
                     // Send email to client

@@ -7,6 +7,7 @@ use App\Mail\BookingStatusNotification;
 use App\Mail\NewBookingRequest;
 use App\Models\BookingAppt;
 use App\Models\BookingApptOthers;
+use App\Models\BookingRecurrence;
 use App\Models\HealthworkerReview;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
@@ -67,6 +68,15 @@ class BookingAppointmentController extends Controller
             'medical_services.*' => 'string|max:255',
             'other_extra_service' => 'nullable|array',
             'other_extra_service.*' => 'string|max:255',
+
+            // Recurrence validation rules
+            'is_recurring' => 'nullable|string|in:Yes,No',
+            'recurrence_type' => 'nullable|required_if:is_recurring,Yes|string|in:Daily,Weekly,Monthly',
+            'recurrence_days' => 'nullable|required_if:recurrence_type,Weekly|array',
+            'recurrence_days.*' => 'string|in:Monday,Tuesday,Wednesday,Thursday,Friday,Saturday,Sunday',
+            'recurrence_end_type' => 'nullable|required_if:is_recurring,Yes|string|in:date,occurrences',
+            'recurrence_end_date' => 'nullable|required_if:recurrence_end_type,date|date|after:end_date',
+            'recurrence_occurrences' => 'nullable|required_if:recurrence_end_type,occurrences|integer|min:1|max:52',
         ]);
 
         if ($validator->fails()) {
@@ -116,6 +126,23 @@ class BookingAppointmentController extends Controller
                 'other_extra_service' => $data['other_extra_service'] ?? [],
             ]);
 
+            // Insert recurrence settings if applicable
+            $isRecurring = $data['is_recurring'] ?? 'No';
+            $bookingApt->recurrence()->create([
+                'is_recurring' => $isRecurring,
+                'recurrence_type' => $isRecurring === 'Yes' ? ($data['recurrence_type'] ?? null) : null,
+                'recurrence_days' => $isRecurring === 'Yes' && ($data['recurrence_type'] ?? null) === 'Weekly'
+                    ? ($data['recurrence_days'] ?? [])
+                    : null,
+                'recurrence_end_type' => $isRecurring === 'Yes' ? ($data['recurrence_end_type'] ?? null) : null,
+                'recurrence_end_date' => $isRecurring === 'Yes' && ($data['recurrence_end_type'] ?? null) === 'date'
+                    ? ($data['recurrence_end_date'] ?? null)
+                    : null,
+                'recurrence_occurrences' => $isRecurring === 'Yes' && ($data['recurrence_end_type'] ?? null) === 'occurrences'
+                    ? ($data['recurrence_occurrences'] ?? null)
+                    : null,
+            ]);
+
             // Send emails to client and admin after booking creation
             try {
                 // Prepare email data
@@ -141,6 +168,19 @@ class BookingAppointmentController extends Controller
                     'meal' => $bookingApt->meal,
                     'num_of_meals' => $bookingApt->num_of_meals,
                     'special_notes' => $bookingApt->special_notes,
+                    // Recurrence fields
+                    'is_recurring' => $isRecurring,
+                    'recurrence_type' => $isRecurring === 'Yes' ? ($data['recurrence_type'] ?? null) : null,
+                    'recurrence_days' => $isRecurring === 'Yes' && ($data['recurrence_type'] ?? null) === 'Weekly'
+                        ? ($data['recurrence_days'] ?? [])
+                        : null,
+                    'recurrence_end_type' => $isRecurring === 'Yes' ? ($data['recurrence_end_type'] ?? null) : null,
+                    'recurrence_end_date' => $isRecurring === 'Yes' && ($data['recurrence_end_type'] ?? null) === 'date'
+                        ? ($data['recurrence_end_date'] ?? null)
+                        : null,
+                    'recurrence_occurrences' => $isRecurring === 'Yes' && ($data['recurrence_end_type'] ?? null) === 'occurrences'
+                        ? ($data['recurrence_occurrences'] ?? null)
+                        : null,
                 ];
 
                 // Client email (recipient_type not set, so it defaults to client view)
@@ -230,7 +270,8 @@ class BookingAppointmentController extends Controller
             $query = BookingAppt::with([
                 'user:uuid,name,email,phone,image,country',
                 'healthWorker:uuid,name,email,phone,image,country,region',
-                'others:uuid,booking_appts_uuid,medical_services,other_extra_service'
+                'others:uuid,booking_appts_uuid,medical_services,other_extra_service',
+                'recurrence:uuid,booking_appts_uuid,is_recurring,recurrence_type,recurrence_days,recurrence_end_type,recurrence_end_date,recurrence_occurrences'
             ])->where('user_uuid', $user->uuid);
 
             // Apply status filter
@@ -595,7 +636,7 @@ class BookingAppointmentController extends Controller
             DB::beginTransaction();
 
             // Find the booking and ensure it belongs to the user
-            $booking = BookingAppt::with(['user:uuid,name,email', 'healthWorker:uuid,name,email'])
+            $booking = BookingAppt::with(['user:uuid,name,email', 'healthWorker:uuid,name,email', 'recurrence'])
                 ->where('uuid', $id)
                 ->where('user_uuid', $user->uuid)
                 ->first();
