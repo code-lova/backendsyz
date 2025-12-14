@@ -185,16 +185,24 @@
         }
         .social-links {
             margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 15px;
         }
         .social-links a {
             color: #ecf0f1;
             text-decoration: none;
-            margin: 0 10px;
             opacity: 0.8;
             transition: opacity 0.3s;
+            padding: 8px 12px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            font-size: 14px;
         }
         .social-links a:hover {
             opacity: 1;
+            background-color: rgba(255, 255, 255, 0.2);
         }
         .disclaimer {
             font-size: 12px;
@@ -336,10 +344,19 @@
                 font-size: 9px;
                 padding: 3px 6px;
             }
+            .social-links {
+                flex-direction: column;
+                align-items: center;
+                gap: 10px;
+            }
             .social-links a {
                 display: block;
-                margin: 5px 0;
+                width: 100%;
+                max-width: 280px;
+                text-align: center;
+                margin: 0;
                 font-size: 13px;
+                padding: 10px 15px;
             }
             .header h1 {
                 font-size: 18px;
@@ -468,6 +485,37 @@
                     <span class="detail-value">{{ $appointment->user->address }}, {{ $appointment->user->region }}, {{ $appointment->user->country }}</span>
                 </div>
 
+                @if($appointment->recurrence && $appointment->recurrence->is_recurring === 'Yes')
+                <div class="detail-row">
+                    <span class="detail-label">Recurring:</span>
+                    <span class="detail-value">
+                        <span class="status-badge" style="background-color: #e3f2fd; color: #1565c0;">Yes - {{ $appointment->recurrence->recurrence_type ?? 'N/A' }}</span>
+                    </span>
+                </div>
+
+                @if($appointment->recurrence->recurrence_type === 'Weekly' && $appointment->recurrence->recurrence_days && count($appointment->recurrence->recurrence_days) > 0)
+                <div class="detail-row">
+                    <span class="detail-label">Repeat Days:</span>
+                    <span class="detail-value">{{ implode(', ', $appointment->recurrence->recurrence_days) }}</span>
+                </div>
+                @endif
+
+                @if($appointment->recurrence->recurrence_end_type)
+                <div class="detail-row">
+                    <span class="detail-label">Ends:</span>
+                    <span class="detail-value">
+                        @if($appointment->recurrence->recurrence_end_type === 'date' && $appointment->recurrence->recurrence_end_date)
+                            On {{ date('F j, Y', strtotime($appointment->recurrence->recurrence_end_date)) }}
+                        @elseif($appointment->recurrence->recurrence_end_type === 'occurrences' && $appointment->recurrence->recurrence_occurrences)
+                            After {{ $appointment->recurrence->recurrence_occurrences }} occurrence{{ $appointment->recurrence->recurrence_occurrences > 1 ? 's' : '' }}
+                        @else
+                            N/A
+                        @endif
+                    </span>
+                </div>
+                @endif
+                @endif
+
                 <div class="detail-row">
                     <span class="detail-label">Confirmed At:</span>
                     <span class="detail-value">{{ date('F j, Y g:i A') }}</span>
@@ -497,9 +545,9 @@
                         <p>Professional Healthcare Services Platform</p>
 
                         <div class="social-links">
-                            <a href="#">📧 support@supracarer.com</a>
-                            <a href="#">🌐 www.supracarer.com</a>
-                            <a href="#">📞 +1 (555) 123-4567</a>
+                            <a href="mailto:support@supracarer.com">📧 support@supracarer.com</a>
+                            <a href="https://www.supracarer.com">🌐 www.supracarer.com</a>
+                            <a href="tel:+233549148087">📞 +(233) 549-148-087</a>
                         </div>
                     </div>
 
