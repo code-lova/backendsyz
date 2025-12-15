@@ -60,7 +60,7 @@ class AppServiceProvider extends ServiceProvider
 
         //Frontend  subscribers rate limiter
         RateLimiter::for('subscribe-newsletter', function (Request $request) {
-            return Limit::perMinutes(10, 3)->by($request->ip()); // Limit to 3 requests per 10 minutes
+            return Limit::perMinutes(10, 2)->by($request->ip()); // Limit to 2 requests per 10 minutes
         });
 
         RateLimiter::for('support', function (Request $request) {
