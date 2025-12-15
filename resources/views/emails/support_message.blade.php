@@ -189,16 +189,20 @@
         }
         .social-links {
             margin-top: 20px;
+            display: grid;
+            grid-template-columns: repeat(2, auto);
+            justify-content: center;
+            gap: 15px;
         }
         .social-links a {
             color: #ecf0f1;
             text-decoration: none;
-            margin: 0 10px;
-            opacity: 0.8;
-            transition: opacity 0.3s;
+            padding: 8px 12px;
+            font-size: 14px;
         }
         .social-links a:hover {
             opacity: 1;
+            background-color: rgba(255, 255, 255, 0.2);
         }
         .disclaimer {
             font-size: 12px;
@@ -340,10 +344,19 @@
                 font-size: 9px;
                 padding: 3px 6px;
             }
+            .social-links {
+                flex-direction: column;
+                align-items: center;
+                gap: 10px;
+            }
             .social-links a {
                 display: block;
-                margin: 5px 0;
+                width: 100%;
+                max-width: 280px;
+                text-align: center;
+                margin: 0;
                 font-size: 13px;
+                padding: 10px 15px;
             }
             .header h1 {
                 font-size: 18px;
@@ -480,9 +493,9 @@
                             <p>Professional Healthcare Services Platform</p>
 
                             <div class="social-links">
-                                <a href="#">📧 support@supracarer.com</a>
-                                <a href="#">🌐 www.supracarer.com</a>
-                                <a href="#">📞 +1 (555) 123-4567</a>
+                                <a href="mailto:support@supracarer.com">📧 support@supracarer.com</a>
+                                <a href="https://www.supracarer.com">🌐 www.supracarer.com</a>
+                                <a href="tel:+233549148087">📞 +(233) 549-148-087</a>
                             </div>
                         </div>
 

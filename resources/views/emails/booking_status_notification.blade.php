@@ -208,16 +208,20 @@
         }
         .social-links {
             margin-top: 20px;
+            display: grid;
+            grid-template-columns: repeat(2, auto);
+            justify-content: center;
+            gap: 15px;
         }
         .social-links a {
             color: #ecf0f1;
             text-decoration: none;
-            margin: 0 10px;
-            opacity: 0.8;
-            transition: opacity 0.3s;
+            padding: 8px 12px;
+            font-size: 14px;
         }
         .social-links a:hover {
             opacity: 1;
+            background-color: rgba(255, 255, 255, 0.2);
         }
         .disclaimer {
             font-size: 12px;
@@ -359,10 +363,19 @@
                 font-size: 9px;
                 padding: 3px 6px;
             }
+            .social-links {
+                flex-direction: column;
+                align-items: center;
+                gap: 10px;
+            }
             .social-links a {
                 display: block;
-                margin: 5px 0;
+                width: 100%;
+                max-width: 280px;
+                text-align: center;
+                margin: 0;
                 font-size: 13px;
+                padding: 10px 15px;
             }
             .header h1 {
                 font-size: 18px;
@@ -598,6 +611,37 @@
                             </div>
                             @endif
 
+                            @if(isset($is_recurring) && $is_recurring === 'Yes')
+                            <div class="detail-row">
+                                <span class="detail-label">Recurring:</span>
+                                <span class="detail-value">
+                                    <span class="status-badge" style="background-color: #e3f2fd; color: #1565c0;">Yes - {{ $recurrence_type ?? 'N/A' }}</span>
+                                </span>
+                            </div>
+
+                            @if(isset($recurrence_type) && $recurrence_type === 'Weekly' && isset($recurrence_days) && is_array($recurrence_days) && count($recurrence_days) > 0)
+                            <div class="detail-row">
+                                <span class="detail-label">Repeat Days:</span>
+                                <span class="detail-value">{{ implode(', ', $recurrence_days) }}</span>
+                            </div>
+                            @endif
+
+                            @if(isset($recurrence_end_type))
+                            <div class="detail-row">
+                                <span class="detail-label">Ends:</span>
+                                <span class="detail-value">
+                                    @if($recurrence_end_type === 'date' && isset($recurrence_end_date))
+                                        On {{ date('F j, Y', strtotime($recurrence_end_date)) }}
+                                    @elseif($recurrence_end_type === 'occurrences' && isset($recurrence_occurrences))
+                                        After {{ $recurrence_occurrences }} occurrence{{ $recurrence_occurrences > 1 ? 's' : '' }}
+                                    @else
+                                        N/A
+                                    @endif
+                                </span>
+                            </div>
+                            @endif
+                            @endif
+
                             <div class="detail-row">
                                 <span class="detail-label">Updated On:</span>
                                 <span class="detail-value">{{ isset($processed_at) ? date('F j, Y g:i A', strtotime($processed_at)) : (isset($completed_at) ? date('F j, Y g:i A', strtotime($completed_at)) : (isset($cancelled_at) ? date('F j, Y g:i A', strtotime($cancelled_at)) : date('F j, Y g:i A'))) }}</span>
@@ -640,9 +684,9 @@
                             <p>Professional Healthcare Services Platform</p>
 
                             <div class="social-links">
-                                <a href="#">📧 support@supracarer.com</a>
-                                <a href="#">🌐 www.supracarer.com</a>
-                                <a href="#">📞 +1 (555) 123-4567</a>
+                                <a href="mailto:support@supracarer.com">📧 support@supracarer.com</a>
+                                <a href="https://www.supracarer.com">🌐 www.supracarer.com</a>
+                                <a href="tel:+233549148087">📞 +(233) 549-148-087</a>
                             </div>
                         </div>
 
