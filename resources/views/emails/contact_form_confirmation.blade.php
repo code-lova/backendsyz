@@ -6,7 +6,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Support Ticket Confirmation</title>
+    <title>We Received Your Message</title>
     <style>
         /* Email client reset */
         #outlook a { padding: 0; }
@@ -74,14 +74,19 @@
             margin-bottom: 30px;
             line-height: 1.8;
         }
-        .ticket-details {
+        .success-icon {
+            text-align: center;
+            margin: 20px 0;
+            font-size: 48px;
+        }
+        .contact-details {
             background-color: #f8f9fa;
             border-left: 4px solid #667eea;
             padding: 20px;
             margin: 25px 0;
             border-radius: 5px;
         }
-        .ticket-details h3 {
+        .contact-details h3 {
             margin-top: 0;
             color: #2c3e50;
             font-size: 18px;
@@ -129,31 +134,20 @@
             padding-top: 2px;
         }
 
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 11px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            line-height: 1;
-            white-space: nowrap;
+        .message-preview {
+            background-color: #ffffff;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            font-style: italic;
+            color: #6c757d;
+            line-height: 1.6;
+            max-height: 100px;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
-        .status-pending {
-            background-color: #fff3cd;
-            color: #856404;
-        }
-        .status-resolved {
-            background-color: #d4edda;
-            color: #155724;
-        }
-        .status-in-progress {
-            background-color: #d1ecf1;
-            color: #0c5460;
-        }
+
         .cta-section {
             text-align: center;
             margin: 30px 0;
@@ -201,6 +195,8 @@
         .social-links a {
             color: #ecf0f1;
             text-decoration: none;
+            opacity: 0.8;
+            transition: opacity 0.3s;
             padding: 8px 12px;
             font-size: 14px;
         }
@@ -235,12 +231,11 @@
             .footer {
                 padding: 20px 15px;
             }
-            .ticket-details {
+            .contact-details {
                 padding: 15px;
                 margin: 20px 0;
             }
 
-            /* Responsive detail rows for medium screens */
             .detail-label {
                 min-width: 100px;
                 max-width: 140px;
@@ -267,12 +262,11 @@
             .footer {
                 padding: 15px 10px;
             }
-            .ticket-details {
+            .contact-details {
                 padding: 12px;
                 margin: 15px 0;
             }
 
-            /* Mobile layout - label takes more space, value floats right */
             .detail-row {
                 display: flex;
                 justify-content: space-between;
@@ -322,13 +316,16 @@
             .greeting {
                 font-size: 16px;
             }
+            .success-icon {
+                font-size: 36px;
+            }
         }
 
         @media (max-width: 360px) {
             .content {
                 padding: 12px 8px;
             }
-            .ticket-details {
+            .contact-details {
                 padding: 10px;
                 margin: 12px 0;
             }
@@ -343,10 +340,6 @@
             .detail-value {
                 font-size: 12px;
                 max-width: 65%;
-            }
-            .status-badge {
-                font-size: 9px;
-                padding: 3px 6px;
             }
             .social-links {
                 flex-direction: column;
@@ -370,7 +363,6 @@
             }
         }
 
-        /* Handle very long values on mobile */
         @media (max-width: 480px) {
             .detail-value {
                 overflow-wrap: break-word;
@@ -381,19 +373,10 @@
             }
         }
 
-        /* Email client specific fixes */
         @media screen and (max-width: 480px) {
             .detail-row[style] {
                 display: flex !important;
                 flex-direction: row !important;
-            }
-        }
-
-        /* Special handling for status badges on mobile */
-        @media (max-width: 480px) {
-            .status-badge {
-                white-space: nowrap;
-                flex-shrink: 0;
             }
         }
     </style>
@@ -411,69 +394,53 @@
 
                     <!-- Content -->
                     <div class="content">
+                        <div class="success-icon">✅</div>
+
                         <div class="greeting">
-                            Hello {{ $user->name }},
+                            Hello {{ $fullname }},
                         </div>
 
                         <div class="message">
-                            Thank you for contacting our support team! Your support ticket has been successfully created and our team has been notified.
+                            Thank you for reaching out to us! We have successfully received your message and our team will review it shortly.
                         </div>
 
                         <div class="message">
-                            We've received your request and will review it promptly. You can expect a response from our support team within 24-48 hours during business days.
+                            You can expect a response from our team within <strong>24-48 hours</strong> during business days. We appreciate your patience and look forward to assisting you.
                         </div>
 
-                        <!-- Ticket Details -->
-                        <div class="ticket-details">
-                            <h3>🎫 Support Ticket Details</h3>
-
-                            <div class="detail-row">
-                                <span class="detail-label">Reference Number:</span>
-                                <span class="detail-value">{{ $ticketData['reference'] }}</span>
-                            </div>
-
-                            <div class="detail-row">
-                                <span class="detail-label">Status:</span>
-                                <span class="detail-value">
-                                    <span class="status-badge status-pending">Pending</span>
-                                </span>
-                            </div>
+                        <!-- Contact Details -->
+                        <div class="contact-details">
+                            <h3>📋 Your Submission Summary</h3>
 
                             <div class="detail-row">
                                 <span class="detail-label">Subject:</span>
-                                <span class="detail-value">{{ $ticketData['subject'] }}</span>
+                                <span class="detail-value">{{ $subject }}</span>
                             </div>
 
                             <div class="detail-row">
-                                <span class="detail-label">Your Email:</span>
-                                <span class="detail-value">{{ $user->email }}</span>
+                                <span class="detail-label">Submitted:</span>
+                                <span class="detail-value">{{ $submitted_at }}</span>
                             </div>
 
-                            <div class="detail-row">
-                                <span class="detail-label">Message:</span>
-                                <span class="detail-value">{{ $ticketData['message'] }}</span>
-                            </div>
-
-                            <div class="detail-row">
-                                <span class="detail-label">Created At:</span>
-                                <span class="detail-value">{{ date('F j, Y g:i A') }}</span>
+                            <div class="message-preview">
+                                "{{ Str::limit($contact_message, 150) }}"
                             </div>
                         </div>
 
                         <div class="cta-section">
-                            <a href="https://www.supracarer.com/signin" class="btn">View Your Tickets</a>
+                            <a href="https://www.supracarer.com" class="btn">Visit Our Website</a>
                         </div>
 
                         <div class="message">
                             <strong>What happens next?</strong><br>
-                            • Our support team will review your request<br>
-                            • You'll receive updates via email<br>
-                            • You can track your ticket status in your dashboard<br>
-                            • For urgent matters, please call our support line
+                            • Our team will review your message<br>
+                            • We'll respond to your inquiry via email<br>
+                            • For urgent matters, please call our support line<br>
+                            • Keep an eye on your inbox (and spam folder) for our reply
                         </div>
 
                         <div class="message">
-                            If you have any additional questions or need immediate assistance, please don't hesitate to contact our support team through the platform or call our helpline.
+                            If you have any additional questions or need immediate assistance, please don't hesitate to contact us directly.
                         </div>
                     </div>
 
@@ -492,8 +459,8 @@
                         </div>
 
                         <div class="disclaimer">
-                            <p>This is an automated message from SupraCarer. Please do not reply to this email.</p>
-                            <p>If you have any questions, please contact our support team through the platform or visit our help center.</p>
+                            <p>This is an automated confirmation from SupraCarer. Please do not reply to this email.</p>
+                            <p>If you did not submit a contact form, please ignore this email.</p>
                             <p>&copy; {{ date('Y') }} SupraCarer. All rights reserved.</p>
                         </div>
                     </div>

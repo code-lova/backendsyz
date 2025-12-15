@@ -51,6 +51,17 @@ Route::controller(\App\Http\Controllers\Auth\AuthController::class)->group(funct
 
 });
 
+
+Route::controller(\App\Http\Controllers\Frontend\FrontendController::class)->group(function (){
+    // Public frontend routes can be defined here
+    Route::post('/contact-us', 'contactUsHandler')->middleware('throttle:contact-us');
+
+    // Subscribe to newsletter
+    Route::post('/subscribe-newsletter', 'subscribeNewsletter')->middleware('throttle:subscribe-newsletter');
+    Route::get('/newsletter/unsubscribe/{uuid}', 'unsubscribeNewsletter');
+});
+
+
 Route::middleware(['auth:sanctum'])->group(function (){
     Route::controller(\App\Http\Controllers\Auth\AuthController::class)->group(function (){
         Route::get('/logout', 'logoutHandler');
