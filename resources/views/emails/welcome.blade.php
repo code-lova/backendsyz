@@ -215,19 +215,15 @@
         }
         .social-links {
             margin-top: 20px;
-            display: flex;
+            display: grid;
+            grid-template-columns: repeat(2, auto);
             justify-content: center;
-            flex-wrap: wrap;
             gap: 15px;
         }
         .social-links a {
             color: #ecf0f1;
             text-decoration: none;
-            opacity: 0.8;
-            transition: opacity 0.3s;
             padding: 8px 12px;
-            background-color: rgba(255, 255, 255, 0.1);
-            border-radius: 5px;
             font-size: 14px;
         }
         .social-links a:hover {

@@ -177,9 +177,9 @@
 
         .social-links {
             margin: 20px 0;
-            display: flex;
+            display: grid;
+            grid-template-columns: repeat(2, auto);
             justify-content: center;
-            flex-wrap: wrap;
             gap: 15px;
         }
 
@@ -189,9 +189,6 @@
             text-decoration: none;
             font-size: 13px;
             padding: 8px 12px;
-            background-color: rgba(0, 0, 0, 0.1);
-            border-radius: 5px;
-            transition: background-color 0.3s;
         }
 
         .social-links a:hover {
