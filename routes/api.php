@@ -151,12 +151,13 @@ Route::middleware(['auth:sanctum', 'role:admin', 'ability:server:admin'])->group
         Route::put('/admin/support-tickets/{id}/status', 'updateTicketStatus');
     });
 
-
-
     Route::controller(\App\Http\Controllers\Admin\SendEmailController::class)->group(function (){
         //SEND EMAILS TO USERS
         Route::post('/admin/send-email', 'sendEmails');
     });
+
+    //Service flyers api for client
+    
 
 
 
