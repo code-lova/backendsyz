@@ -156,8 +156,17 @@ Route::middleware(['auth:sanctum', 'role:admin', 'ability:server:admin'])->group
         Route::post('/admin/send-email', 'sendEmails');
     });
 
-    //Service flyers api for client
-    
+    // Service flyers admin CRUD routes
+    Route::controller(\App\Http\Controllers\Admin\ServiceFlyerController::class)->group(function (){
+        Route::get('/admin/service-flyers', 'index'); // List all flyers with filters
+        Route::post('/admin/service-flyers', 'store'); // Create new flyer
+        Route::get('/admin/service-flyers/{uuid}', 'show'); // Get specific flyer
+        Route::put('/admin/service-flyers/{uuid}', 'update'); // Update flyer
+        Route::delete('/admin/service-flyers/{uuid}', 'destroy'); // Delete flyer
+        Route::patch('/admin/service-flyers/{uuid}/toggle-status', 'toggleStatus'); // Toggle active/inactive
+        Route::patch('/admin/service-flyers/sort-order', 'updateSortOrder'); // Update sort order
+    });
+
 
 
 
@@ -195,6 +204,12 @@ Route::middleware(['auth:sanctum', 'role:client', 'ability:server:client'])->gro
         Route::post('/ticket-support/{id}/reply', 'replyToTicket');
     });
 
+    // Client service flyers routes
+    Route::controller(\App\Http\Controllers\Client\ServiceFlyerController::class)->group(function () {
+        Route::get('/client/service-flyers', 'index'); // Get active service flyers for clients
+        Route::get('/client/service-flyers/{uuid}', 'show'); // Get specific service flyer
+    });
+
 });
 
 
@@ -230,5 +245,11 @@ Route::middleware(['auth:sanctum', 'role:healthworker', 'ability:server:healthwo
         Route::put('/confirm-booking-request/{uuid}/accept', 'acceptBookingRequest');
         Route::get('/healthworker/appointments', 'getHealthworkerAppointments');
         Route::put('/update-booking-request/{uuid}/ongoing', 'updateToOngoingBookingRequest');
+    });
+
+    // Health worker service flyers routes
+    Route::controller(\App\Http\Controllers\Healthworker\ServiceFlyerController::class)->group(function () {
+        Route::get('/health/service-flyers', 'index'); // Get active service flyers for health workers
+        Route::get('/health/service-flyers/{uuid}', 'show'); // Get specific service flyer
     });
 });
