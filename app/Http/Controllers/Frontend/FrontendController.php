@@ -56,7 +56,7 @@ class FrontendController extends Controller
                 'message' => 'Security verification failed. Please try again.',
             ], 422);
         }
-      
+
         try {
 
             // Prepare mail data
@@ -105,7 +105,7 @@ class FrontendController extends Controller
             ], 500);
         }
 
-       
+
     }
 
 
