@@ -167,6 +167,12 @@ Route::middleware(['auth:sanctum', 'role:admin', 'ability:server:admin'])->group
         Route::patch('/admin/service-flyers/sort-order', 'updateSortOrder'); // Update sort order
     });
 
+    //Get subscribers details (Fetch, search, filter, paginate)
+
+    Route::controller(\App\Http\Controllers\Admin\NewsLetterController::class)->group(function (){
+        Route::get('/newsletter-subscribers', 'listSubscribers');
+        Route::delete('/newsletter-subscribers/{uuid}/delete', 'deleteSubscriber');
+    });
 
 
 
