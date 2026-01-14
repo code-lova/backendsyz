@@ -2,24 +2,25 @@
 
 namespace App\Http\Controllers\Auth;
 
-use App\Http\Controllers\Controller;
+use Exception;
+use App\Models\User;
+use App\Mail\WelcomeEmail;
+use Illuminate\Support\Str;
+use Illuminate\Http\Request;
 use App\Mail\TwoFactorCodeMail;
 use App\Mail\VerifyEmailCodeMail;
-use App\Mail\WelcomeEmail;
-use App\Models\User;
-use App\Services\NotificationService;
-use Exception;
-use Illuminate\Auth\Events\PasswordReset;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Password;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Str;
 use Jenssegers\Agent\Facades\Agent;
+use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
+use App\Services\NotificationService;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Auth\Events\PasswordReset;
+use Illuminate\Support\Facades\Validator;
 
 class AuthController extends Controller
 {
@@ -44,6 +45,8 @@ class AuthController extends Controller
                 'password' => 'required|min:8|confirmed',
                 'role' => 'required|in:admin,client,healthworker',
                 'practitioner' => 'nullable|in:doctor,nurse,physician_assistant',
+                'turnstileToken' => 'required|string',
+
             ], [
                 'email.required' => 'Email is required',
                 'password.required' => 'Provide your password',
@@ -68,6 +71,39 @@ class AuthController extends Controller
                 'email_verification_code' => $verificationCode,
                 'email_verification_code_expires_at' => now()->addMinutes(10),
             ]);
+
+            // Verify Cloudflare Turnstile
+            $turnstileResponse = Http::asForm()->post('https://challenges.cloudflare.com/turnstile/v0/siteverify', [
+                'secret' => config('services.turnstile.secret_key'),
+                'response' => $request->turnstileToken,
+                'remoteip' => $request->ip(),
+            ]);
+
+            if (!$turnstileResponse->json('success')) {
+                return response()->json([
+                    'message' => 'Security verification failed. Please try again.',
+                ], 422);
+            }
+
+            // Verify Cloudflare Turnstile
+            $turnstileResponse = Http::asForm()->post('https://challenges.cloudflare.com/turnstile/v0/siteverify', [
+                'secret' => config('services.turnstile.secret_key'),
+                'response' => $request->turnstileToken,
+                'remoteip' => $request->ip(),
+            ]);
+
+            if (!$turnstileResponse->json('success')) {
+                Log::warning('Turnstile verification failed', [
+                    'email' => $request->email,
+                    'ip' => $request->ip(),
+                    'errors' => $turnstileResponse->json('error-codes'),
+                ]);
+
+                return response()->json([
+                    'message' => 'Security verification failed. Please try again.',
+                ], 422);
+            }
+
 
             $token = $user->createToken('API Token')->plainTextToken;
 
