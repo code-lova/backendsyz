@@ -162,7 +162,7 @@ class FrontendController extends Controller
             $mailData = [
                 'email' => $subscriber->email,
                 'subscribed_at' => $subscriber->subscribed_at->format('F j, Y g:i A'),
-                'unsubscribe_url' => config('app.url') . '/api/newsletter/unsubscribe/' . $subscriber->uuid,
+                'unsubscribe_url' => config('app.frontend_url') . '/newsletter/unsubscribe/' . $subscriber->uuid,
             ];
 
             // Send welcome email to the subscriber
@@ -198,7 +198,7 @@ class FrontendController extends Controller
      * Unsubscribe a user from the newsletter.
      *
      * @param string $uuid
-     * @return \Illuminate\Http\Response
+     * @return \Illuminate\Http\JsonResponse
      */
     public function unsubscribeNewsletter(string $uuid)
     {
@@ -207,15 +207,14 @@ class FrontendController extends Controller
             $subscriber = NewsletterSubscriber::where('uuid', $uuid)->first();
 
             if (!$subscriber) {
-                return response()->view('emails.unsubscribe_result', [
+                return response()->json([
                     'success' => false,
-                    'message' => 'Invalid unsubscribe link. Subscriber not found.',
                 ], 404);
             }
 
             // Check if already unsubscribed
             if (!$subscriber->isActive()) {
-                return response()->view('emails.unsubscribe_result', [
+                return response()->json([
                     'success' => true,
                     'message' => 'You have already been unsubscribed from our newsletter.',
                     'email' => $subscriber->email,
@@ -231,11 +230,11 @@ class FrontendController extends Controller
                 'uuid' => $subscriber->uuid,
             ]);
 
-            return response()->view('emails.unsubscribe_result', [
+            return response()->json([
                 'success' => true,
                 'message' => 'You have successfully unsubscribed from our newsletter.',
                 'email' => $subscriber->email,
-            ]);
+            ], 200);
 
         } catch (\Exception $e) {
             Log::error('Newsletter unsubscription failed', [
@@ -243,9 +242,10 @@ class FrontendController extends Controller
                 'uuid' => $uuid,
             ]);
 
-            return response()->view('emails.unsubscribe_result', [
-                'success' => false,
-                'message' => 'Something went wrong. Please try again later.',
+            return response()->json([
+                'message' => app()->environment('production')
+                    ? 'Something went wrong. Please try again later.'
+                    : $e->getMessage(),
             ], 500);
         }
     }
