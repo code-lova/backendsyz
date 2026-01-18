@@ -80,19 +80,6 @@ class AuthController extends Controller
             ]);
 
             if (!$turnstileResponse->json('success')) {
-                return response()->json([
-                    'message' => 'Security verification failed. Please try again.',
-                ], 422);
-            }
-
-            // Verify Cloudflare Turnstile
-            $turnstileResponse = Http::asForm()->post('https://challenges.cloudflare.com/turnstile/v0/siteverify', [
-                'secret' => config('services.turnstile.secret_key'),
-                'response' => $request->turnstileToken,
-                'remoteip' => $request->ip(),
-            ]);
-
-            if (!$turnstileResponse->json('success')) {
                 Log::warning('Turnstile verification failed', [
                     'email' => $request->email,
                     'ip' => $request->ip(),
