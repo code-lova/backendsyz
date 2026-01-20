@@ -41,7 +41,8 @@ class BookingAppointmentController extends Controller
     {
         $user = Auth::user();
 
-        $validator = Validator::make($request->all(), [
+        // Base validation rules
+        $rules = [
             'requesting_for' => 'required|string|in:Self,Someone',
 
             'someone_name' => 'nullable|string|max:255',
@@ -69,15 +70,29 @@ class BookingAppointmentController extends Controller
             'other_extra_service' => 'nullable|array',
             'other_extra_service.*' => 'string|max:255',
 
-            // Recurrence validation rules
+            // Recurrence validation rules - base
             'is_recurring' => 'nullable|string|in:Yes,No',
-            'recurrence_type' => 'nullable|required_if:is_recurring,Yes|string|in:Daily,Weekly,Monthly',
-            'recurrence_days' => 'nullable|required_if:recurrence_type,Weekly|array',
-            'recurrence_days.*' => 'string|in:Monday,Tuesday,Wednesday,Thursday,Friday,Saturday,Sunday',
-            'recurrence_end_type' => 'nullable|required_if:is_recurring,Yes|string|in:date,occurrences',
-            'recurrence_end_date' => 'nullable|required_if:recurrence_end_type,date|date|after:end_date',
-            'recurrence_occurrences' => 'nullable|required_if:recurrence_end_type,occurrences|integer|min:1|max:52',
-        ]);
+        ];
+
+        // Add recurrence rules only if is_recurring is Yes
+        if ($request->is_recurring === 'Yes') {
+            $rules['recurrence_type'] = 'required|string|in:Daily,Weekly,Monthly';
+            $rules['recurrence_days'] = 'nullable|required_if:recurrence_type,Weekly|array';
+            $rules['recurrence_days.*'] = 'string|in:Monday,Tuesday,Wednesday,Thursday,Friday,Saturday,Sunday';
+            $rules['recurrence_end_type'] = 'required|string|in:date,occurrences';
+            $rules['recurrence_end_date'] = 'nullable|required_if:recurrence_end_type,date|date|after:end_date';
+            $rules['recurrence_occurrences'] = 'nullable|required_if:recurrence_end_type,occurrences|integer|min:1|max:52';
+        } else {
+            // If not recurring, make recurrence fields nullable only
+            $rules['recurrence_type'] = 'nullable';
+            $rules['recurrence_days'] = 'nullable';
+            $rules['recurrence_days.*'] = 'nullable';
+            $rules['recurrence_end_type'] = 'nullable';
+            $rules['recurrence_end_date'] = 'nullable';
+            $rules['recurrence_occurrences'] = 'nullable';
+        }
+
+        $validator = Validator::make($request->all(), $rules);
 
         if ($validator->fails()) {
             return response()->json([
