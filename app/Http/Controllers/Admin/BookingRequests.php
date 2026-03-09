@@ -182,6 +182,37 @@ class BookingRequests extends Controller
 
             $data = $validator->validated();
 
+            //lets check if the healthworker is_verified before assigning to the booking
+            if (isset($data['health_worker_uuid']) && $data['health_worker_uuid']) {
+                $healthWorker = User::where('uuid', $data['health_worker_uuid'])->first();
+                if (!$healthWorker) {
+                    return response()->json([
+                        'message' => 'Health worker not found.'
+                    ], 404);
+                }
+                if ($healthWorker->is_verified === 0) {
+                    return response()->json([
+                        'message' => 'Selected health worker is not verified.'
+                    ], 422);
+                }
+            }
+
+            //Lets also check if the healthworker have updated their profile details
+            if (isset($data['health_worker_uuid']) && $data['health_worker_uuid']) {
+                $healthWorker = User::where('uuid', $data['health_worker_uuid'])->first();
+                if (!$healthWorker) {
+                    return response()->json([
+                        'message' => 'Health worker not found.'
+                    ], 404);
+                }
+                if (!$healthWorker->working_hours || !$healthWorker->phone || !$healthWorker->country || !$healthWorker->region || !$healthWorker->address) {
+                    return response()->json([
+                        'message' => 'Selected health worker has incomplete profile details.'
+                    ], 422);
+                }
+            }
+
+
             // Find the booking to be processed
             $booking = BookingAppt::with(['user', 'recurrence'])->where('uuid', $id)->first();
 
@@ -197,6 +228,7 @@ class BookingRequests extends Controller
                     'message' => 'Only pending, processing, or confirmed booking requests can be processed.'
                 ], 422);
             }
+
 
             if ($data['action'] === 'processing') {
                 // Check if this is a health worker reassignment

@@ -126,7 +126,10 @@ Route::middleware(['auth:sanctum', 'role:admin', 'ability:server:admin'])->group
         Route::get('/allusers', 'listUsers');
         Route::put('/user/{uuid}/update-user', 'updateUser');
         Route::put('/user/{uuid}/block', 'blockUser');
-        Route::delete('/user/{uuid}', 'deleteUser'); // Has not been implemented yet
+        Route::delete('/user/{uuid}/delete-account', 'deleteUser'); // Has not been implemented yet
+
+        //verify health worker account
+        Route::put('/user/{uuid}/verify', 'verifyHealthWorker');
 
         //Fetch all users that have roles health workers
         Route::get('/all-health-workers', 'getHealthWorkers');
