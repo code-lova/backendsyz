@@ -58,6 +58,7 @@ class User extends Authenticatable implements CanResetPassword
         'two_factor_code',
         'two_factor_expires_at',
         'is_active',
+        'is_verified',
     ];
 
     /**
@@ -98,6 +99,14 @@ class User extends Authenticatable implements CanResetPassword
     public function isBlocked(): bool
     {
         return $this->is_active === '0';
+    }
+
+    /**
+     * check if the user who has role as health worker is verified
+     */
+    public function isVerified(): bool
+    {
+        return $this->is_verified === 1;
     }
 
     public function sessions()

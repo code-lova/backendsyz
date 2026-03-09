@@ -32,6 +32,7 @@ class HealthWorkerResource extends JsonResource
             'last_logged_in' => $this->last_logged_in,
             'latitude' => $this->latitude,
             'longitude' => $this->longitude,
+            'is_verified' => $this->isVerified(),
         ];
     }
 }

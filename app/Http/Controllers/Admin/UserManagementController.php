@@ -34,11 +34,21 @@ class UserManagementController extends Controller
 
             // Filter by email verified status
             if (request()->has('email_verified') && request('email_verified') !== null) {
-                $verified = filter_var(request('email_verified'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
-                if ($verified === true) {
+                $valid = filter_var(request('email_verified'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+                if ($valid === true) {
                     $query->whereNotNull('email_verified_at');
-                } elseif ($verified === false) {
+                } elseif ($valid === false) {
                     $query->whereNull('email_verified_at');
+                }
+            }
+
+            //filter by is_verified status
+             if (request()->has('is_verified') && request('is_verified')) {
+                $verified = filter_var(request('is_verified'), FILTER_VALIDATE_BOOLEAN);
+                if ($verified === true) {
+                    $query->where('role', 'healthworker')->where('is_verified', '1');
+                } elseif ($verified === false) {
+                    $query->where('role', 'healthworker')->where('is_verified', '0');
                 }
             }
 
@@ -207,8 +217,8 @@ class UserManagementController extends Controller
 
             return response()->json([
                 'status' => 'Error',
-                'message' => app()->environment('production') 
-                    ? 'Something went wrong while updating user details.' 
+                'message' => app()->environment('production')
+                    ? 'Something went wrong while updating user details.'
                     : $e->getMessage(),
                 'error' => !app()->environment('production') ? $e->getMessage() : null
             ], 500);
@@ -231,7 +241,7 @@ class UserManagementController extends Controller
                 $healthWorker->is_assigned = BookingAppt::where('health_worker_uuid', $healthWorker->uuid)
                     ->whereIn('status', ['Confirmed', 'Ongoing'])
                     ->exists();
-                    
+
                 // Check if health worker is assigned to processing appointments (awaiting confirmation)
                 $healthWorker->is_processing = BookingAppt::where('health_worker_uuid', $healthWorker->uuid)
                     ->where('status', 'Processing')
@@ -372,14 +382,205 @@ class UserManagementController extends Controller
 
             return response()->json([
                 'status' => 'Error',
-                'message' => app()->environment('production') 
-                    ? 'Something went wrong while updating user status.' 
+                'message' => app()->environment('production')
+                    ? 'Something went wrong while updating user status.'
                     : $e->getMessage(),
                 'error' => !app()->environment('production') ? $e->getMessage() : null
             ], 500);
         }
     }
 
+
+    //function for admin to be able to delete a user account
+    public function deleteUser(Request $request, string $uuid) {
+        try {
+            // Validate the UUID format
+            $validator = Validator::make(['uuid' => $uuid], [
+                'uuid' => 'required|uuid'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'status' => 'Error',
+                    'message' => 'Invalid user identifier provided.',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            // Get authenticated admin user
+            $admin = Auth::user();
+            if (!$admin || $admin->role !== 'admin') {
+                return response()->json([
+                    'status' => 'Error',
+                    'message' => 'Unauthorized. Only admins can delete users.'
+                ], 403);
+            }
+
+            // Find user by UUID
+            $user = User::where('uuid', $uuid)->first();
+
+            if (!$user) {
+                return response()->json([
+                    'status' => 'Error',
+                    'message' => 'User not found.'
+                ], 404);
+            }
+
+            // Prevent admin from deleting themselves
+            if ($user->uuid === $admin->uuid) {
+                return response()->json([
+                    'status' => 'Error',
+                    'message' => 'You cannot delete your own account.'
+                ], 400);
+            }
+
+            // Store user data for logging before deletion
+            $userData = $user->toArray();
+
+            // Use database transaction for data integrity
+            DB::transaction(function () use ($user) {
+                // Optionally, you could soft delete instead of hard delete
+                $user->delete();
+            });
+
+            // Log the deletion action for audit trail
+            Log::info('Admin user deletion action', [
+                'admin_id' => $admin->id,
+                'admin_uuid' => $admin->uuid,
+                'admin_email' => $admin->email,
+                'target_user_id' => $userData['id'],
+                'target_user_uuid' => $userData['uuid'],
+                'target_user_email' => $userData['email'],
+                'target_user_role' => $userData['role'],
+                'action' => 'deleted',
+                'timestamp' => now()
+            ]);
+
+            return response()->json([
+                'status' => 'Success',
+                'message' => 'User has been deleted successfully.',
+                'data' => [
+                    'user' => [
+                        'uuid' => $userData['uuid'],
+                        'name' => $userData['name'],
+                        'email' => $userData['email'],
+                        'role' => $userData['role'],
+                        'deleted_at' => now()
+                    ]
+                ]
+            ], 200);
+        } catch (\Exception $e) {
+            // Log error for debugging
+            Log::error('Unable to delete user', [
+                'admin_id' => Auth::id(),
+                'admin_uuid' => Auth::user()->uuid ?? null,
+                'target_user_uuid' => $uuid,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json([
+                'status' => 'Error',
+                'message' => 'An error occurred while deleting the user.'
+            ], 500);
+        }
+    }
+
+
+
+    //Make a user verified or unverified (for health workers)
+    public function verifyHealthWorker(Request $request, string $uuid)
+    {
+        try {
+            // Validate the UUID format
+            $validator = Validator::make(['uuid' => $uuid], [
+                'uuid' => 'required|uuid'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'status' => 'Error',
+                    'message' => 'Invalid UUID format.'
+                ], 422);
+            }
+            // Get authenticated admin user
+            $admin = Auth::user();
+            if (!$admin || $admin->role !== 'admin') {
+                return response()->json([
+                    'status' => 'Error',
+                    'message' => 'Unauthorized. Only admins can verify health workers.'
+                ], 403);
+            }
+            // Find user by UUID
+            $user = User::where('uuid', $uuid)->first();
+            if (!$user) {
+                return response()->json([
+                    'status' => 'Error',
+                    'message' => 'User not found.'
+                ], 404);
+            }
+            if ($user->role !== 'healthworker') {
+                return response()->json([
+                    'status' => 'Error',
+                    'message' => 'Only users with the health worker role can be verified.'
+                ], 400);
+            }
+            // Store the current verification status for logging
+            $previousStatus = $user->is_verified;
+            // Use database transaction for data integrity
+            DB::transaction(function () use ($user) {
+                // Toggle verification status - convert boolean to string for ENUM column
+                $user->is_verified = $user->is_verified == '1' ? '0' : '1';
+                $user->save();
+            });
+            // Determine action and message
+            $action = $user->is_verified == '1' ? 'verified' : 'unverified';
+            $message = $user->is_verified == '1' ? 'Health worker has been verified successfully.' : 'Health worker has been unverified successfully.';
+            // Log the action for audit trail
+            Log::info('Admin health worker verification action', [
+                'admin_id' => $admin->id,
+                'admin_uuid' => $admin->uuid,
+                'admin_email' => $admin->email,
+                'target_user_id' => $user->id,
+                'target_user_uuid' => $user->uuid,
+                'target_user_email' => $user->email,
+                'action' => $action,
+                'previous_status' => $previousStatus == '1' ? 'verified' : 'unverified',
+                'new_status' => $user->is_verified == '1' ? 'verified' : 'unverified',
+                'timestamp' => now()
+            ]);
+            return response()->json([
+                'status' => 'Success',
+                'message' => $message,
+                'data' => [
+                    'user' => [
+                        'uuid' => $user->uuid,
+                        'name' => $user->name,
+                        'email' => $user->email,
+                        'role' => $user->role,
+                        'is_verified' => $user->is_verified == '1', // Convert to boolean for API response
+                        'updated_at' => $user->updated_at
+                    ],
+                    'action_performed' => $action
+                ]
+            ], 200);
+        } catch (\Exception $e) {
+            // Log error for debugging
+            Log::error('Unable to verify/unverify health worker', [
+                'admin_id' => Auth::id(),
+                'admin_uuid' => Auth::user()->uuid ?? null,
+                'target_user_uuid' => $uuid,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json([
+                'status' => 'Error',
+                'message' => app()->environment('production')
+                    ? 'Something went wrong while updating health worker verification status.'
+                    : $e->getMessage(),
+                'error' => !app()->environment('production') ? $e->getMessage() : null
+            ], 500);
+        }
+    }
 
     //Get all deleted user accounts for administrator
     public function getDeletedAccounts(){
@@ -395,7 +596,7 @@ class UserManagementController extends Controller
                 });
             }
 
-        
+
             // Sort fullname
             $sortBy = request('sort_by') ?? 'created_at';
             $sortOrder = strtolower(request('sort_order') ?? 'desc'); // default desc (newest first)
