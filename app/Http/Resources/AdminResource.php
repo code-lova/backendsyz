@@ -31,6 +31,8 @@ class AdminResource extends JsonResource
             'longitude' => $this->longitude,
             'two_fa_enabled' => $this->two_factor_enabled,
             'joined' => $this->created_at,
+            'is_verified' => $this->isVerified(),
+            'user_role' => $this->role,
         ];
     }
 }

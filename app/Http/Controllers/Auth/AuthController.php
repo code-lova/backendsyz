@@ -61,6 +61,10 @@ class AuthController extends Controller
             }
             $verificationCode = strtoupper(Str::random(6)); // 6-char alphanumeric
 
+            $requestClientRole = $request->role;
+
+           
+
             $user = User::create([
                 'name' => $request->name,
                 'phone' => $request->phone,
@@ -70,7 +74,14 @@ class AuthController extends Controller
                 'password' => Hash::make($request->password),
                 'email_verification_code' => $verificationCode,
                 'email_verification_code_expires_at' => now()->addMinutes(10),
+                
             ]);
+
+            //update the is_verified column for client to 1
+            if($user->role == "client"){
+                $user->is_verified = 1;
+                $user->save();
+            }
 
             // Verify Cloudflare Turnstile
             $turnstileResponse = Http::asForm()->post('https://challenges.cloudflare.com/turnstile/v0/siteverify', [
@@ -172,7 +183,7 @@ class AuthController extends Controller
                 ]);
 
                 return response()->json([
-                    'message' => 'Your account has been suspended. Please contact support for assistance.',
+                    'message' => 'Verifying your account. This may take few minutes - Please wait...',
                     'error_code' => 'ACCOUNT_BLOCKED'
                 ], 403);
             }
